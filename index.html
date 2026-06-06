@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#16161f" />
-<title>NEXARCH · Inventory &amp; Purchasing</title>
+<title>Everose Marketing Corp. · Inventory &amp; Purchasing</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -204,6 +204,7 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" crossorigin="anonymous"></script>
 
 <!-- plain data (no babel) -->
 <script>
@@ -1137,6 +1138,8 @@ const PATHS = {
   tag: "M8 2 L14 2 L14 8 L8 14 L2 8 Z M11 5 v.01",
   refresh: "M13 7 a5 5 0 1 0-1 4 M13 3 L13 7 L9 7",
   receipt: "M3.5 2 L12.5 2 L12.5 14 L10.5 12.5 L8 14 L5.5 12.5 L3.5 14 Z M6 5.5 L10 5.5 M6 8 L10 8",
+  camera: "M1.5 5 L5 5 L6.5 2.5 L9.5 2.5 L11 5 L14.5 5 L14.5 13.5 L1.5 13.5 Z M8 10.5 a2.5 2.5 0 1 1 0-5 a2.5 2.5 0 0 1 0 5",
+  barcode: "M2 3 L2 13 M4 3 L4 13 M6.5 3 L6.5 13 M8 3 L8 13 M9.5 3 L9.5 13 M11 3 L11 13 M13 3 L13 13",
 };
 function Icon({ name, size = 16, style, className }) {
   return (
@@ -1512,6 +1515,80 @@ Object.assign(window, {
   StockBar, Thumb, Avatar, Sidebar, Drawer, useToasts, Toasts, Segmented,
 });
 
+</script>
+
+<script type="text/babel">
+/* scanner.jsx — Camera barcode/QR scanner modal */
+const { useEffect: useEffectScan, useRef: useRefScan, useState: useStateScan } = React;
+
+function BarcodeScanner({ onScan, onClose }) {
+  const [status, setStatus] = useStateScan("init"); // init | scanning | error
+  const [errMsg, setErrMsg] = useStateScan("");
+  const scannerRef = useRefScan(null);
+  const divId = "bs-reader-" + Math.floor(Math.random() * 9999);
+
+  useEffectScan(() => {
+    if (!window.Html5Qrcode) {
+      setStatus("error"); setErrMsg("Scanner library unavailable. Check internet connection."); return;
+    }
+    let stopped = false;
+    const scanner = new Html5Qrcode(divId);
+    scannerRef.current = scanner;
+    setStatus("scanning");
+    scanner.start(
+      { facingMode: "environment" },
+      { fps: 12, qrbox: { width: 260, height: 160 }, aspectRatio: 1.333 },
+      (text) => {
+        if (stopped) return;
+        stopped = true;
+        scanner.stop().then(() => onScan(text.trim())).catch(() => onScan(text.trim()));
+      },
+      () => {}
+    ).catch(() => {
+      setStatus("error");
+      setErrMsg("Camera access denied. Tap 'Allow' when the browser asks for camera permission, then reopen scanner.");
+    });
+    return () => { if (!stopped && scannerRef.current) { stopped = true; scannerRef.current.stop().catch(() => {}); } };
+  }, []);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 700, background: "oklch(0 0 0 / 0.84)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+      onClick={(e) => { if (e.target === e.currentTarget) { if (scannerRef.current) scannerRef.current.stop().catch(()=>{}); onClose(); } }}>
+      <div style={{ background: "var(--elev)", borderRadius: 14, padding: "20px 20px 24px", width: 360, maxWidth: "100%", boxShadow: "0 24px 60px oklch(0 0 0 / 0.5)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <Icon name="camera" size={18} style={{ color: "var(--accent-text)" }} />
+          <span style={{ fontWeight: 700, fontSize: 14.5 }}>Scan Barcode / QR Code</span>
+          <button className="btn ghost sm" style={{ marginLeft: "auto" }} onClick={() => { if (scannerRef.current) scannerRef.current.stop().catch(()=>{}); onClose(); }}>✕ Close</button>
+        </div>
+        {status === "error" ? (
+          <div style={{ padding: "24px 12px", textAlign: "center" }}>
+            <Icon name="alert" size={32} style={{ color: "var(--out)", marginBottom: 10 }} />
+            <div style={{ fontSize: 13, color: "var(--out)", fontWeight: 600, marginBottom: 6 }}>Scanner unavailable</div>
+            <div style={{ fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.5 }}>{errMsg}</div>
+          </div>
+        ) : (
+          <div id={divId} style={{ width: "100%", minHeight: 220, borderRadius: 8, overflow: "hidden", background: "var(--bg)" }} />
+        )}
+        <div style={{ marginTop: 14, textAlign: "center", fontSize: 11.5, color: "var(--ink-4)", lineHeight: 1.5 }}>
+          Point camera at barcode or QR code on product label.<br/>
+          <span style={{ fontSize: 11, opacity: 0.7 }}>Supports EAN-13, UPC-A, Code128, QR, DataMatrix</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function downloadCSV(filename, cols, rows) {
+  const esc = (v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+  const csv = [cols.map(esc).join(","), ...rows.map((r) => r.map(esc).join(","))].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = filename.replace(/[^a-z0-9_\-\.]/gi, "_") + ".csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+Object.assign(window, { BarcodeScanner, downloadCSV });
 </script>
 
 <script type="text/babel">
@@ -2831,6 +2908,7 @@ function POSScreen({ onComplete, toast, onPrint }) {
   const [discountPct, setDiscountPct] = useStatePOS(0);
   const [payments, setPayments] = useStatePOS([]);
   const [receipt, setReceipt] = useStatePOS(null);
+  const [showScanner, setShowScanner] = useStatePOS(false);
 
   const popular = useMemoPOS(() => DATA.PRODUCTS.filter((p) => p.total > 0).slice(0, 8), []);
   const subtotal = cart.reduce((s, l) => s + l.price * l.qty + (l.install ? 79 : 0), 0);
@@ -2877,9 +2955,11 @@ function POSScreen({ onComplete, toast, onPrint }) {
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", gap: 16, animation: "fadeIn .2s ease both", alignItems: "start" }} className="pos-grid">
       {/* LEFT: scan + catalog + cart */}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
         <AutoComplete value={scan} onChange={setScan} onPick={addProduct}
           items={DATA.PRODUCTS} fields={[{ key: "name", w: 1 }, { key: "sku", w: 0.95 }, { key: "brand", w: 0.8 }]} icon="search" size="lg"
-          placeholder="Scan barcode or search to add to cart…"
+          placeholder="Search or scan product SKU / name…"
           footer={<div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--ink-3)", fontSize: 11 }}><Icon name="sparkles" size={13} style={{ color: "var(--accent-text)" }} />Typo-tolerant · <span className="kbd">↵</span> adds top match</div>}
           render={(p, q) => (
             <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
@@ -2891,6 +2971,20 @@ function POSScreen({ onComplete, toast, onPrint }) {
               <span className="mono tnum" style={{ fontSize: 13, fontWeight: 700 }}>{money(p.price)}</span>
             </div>
           )} />
+          </div>
+          <button className="btn" title="Scan barcode" onClick={() => setShowScanner(true)}
+            style={{ height: 50, padding: "0 14px", flex: "none", display: "flex", alignItems: "center", gap: 7 }}>
+            <Icon name="camera" size={18} /><span style={{ fontSize: 12, fontWeight: 600 }}>Scan</span>
+          </button>
+        </div>
+        {showScanner && <BarcodeScanner
+          onScan={(code) => {
+            setShowScanner(false);
+            const p = DATA.PRODUCTS.find((x) => x.sku === code || x.sku.toLowerCase() === code.toLowerCase() || x.name.toLowerCase() === code.toLowerCase());
+            if (p) { addProduct(p); toast && toast("Added: " + p.name, "ok"); }
+            else toast && toast("Product not found: " + code, "bad");
+          }}
+          onClose={() => setShowScanner(false)} />}
 
         {/* quick tiles */}
         <div>
