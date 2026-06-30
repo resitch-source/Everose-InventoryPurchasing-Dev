@@ -187,6 +187,7 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
   <div class="sb-sect">User Guide</div>
   <a href="#cover"      class="ni"><span class="ni-badge">★</span>Cover &amp; Overview</a>
   <a href="#quickstart" class="ni"><span class="ni-badge">1</span>Quick Start</a>
+  <a href="#login"      class="ni"><span class="ni-badge">1b</span>Login &amp; Branch</a>
   <a href="#dashboard"  class="ni"><span class="ni-badge">2</span>Dashboard</a>
   <a href="#pos"        class="ni"><span class="ni-badge">3</span>Point of Sale</a>
   <a href="#inventory"  class="ni"><span class="ni-badge">4</span>Inventory</a>
@@ -232,7 +233,7 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
   </div>
   <div class="cover-version">
     <div class="cover-dot"></div>
-    <span>Includes: Product Photos · Customer Management · Credit Companies · Multi-Channel Notifications</span>
+    <span>Includes: Branch Login System · Sales Analytics · Reports · Multi-Channel Notifications · Admin Guide</span>
     <div class="cover-dot"></div>
     <span>Latest Features 2025</span>
   </div>
@@ -241,6 +242,7 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
     <div style="font-size:11.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">Table of Contents</div>
     <div class="toc">
       <a href="#quickstart" class="toc-item"><span class="toc-num">1</span>Quick Start Guide</a>
+      <a href="#login"      class="toc-item"><span class="toc-num">1b</span>Login &amp; Branch Access</a>
       <a href="#dashboard"  class="toc-item"><span class="toc-num">2</span>Dashboard</a>
       <a href="#pos"        class="toc-item"><span class="toc-num">3</span>Point of Sale</a>
       <a href="#inventory"  class="toc-item"><span class="toc-num">4</span>Inventory Management</a>
@@ -254,7 +256,7 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
       <a href="#channels"   class="toc-item"><span class="toc-num">12</span>Multi-Channel Setup</a>
       <a href="#data"       class="toc-item"><span class="toc-num admin">A1</span>Admin: Data &amp; Backup</a>
       <a href="#settings"   class="toc-item"><span class="toc-num admin">A2</span>Admin: Settings</a>
-      <a href="#roles"      class="toc-item"><span class="toc-num admin">A3</span>Admin: User Roles</a>
+      <a href="#roles"      class="toc-item"><span class="toc-num admin">A3</span>Admin: User Accounts &amp; PINs</a>
       <a href="#ref"        class="toc-item"><span class="toc-num admin">A5</span>Reference &amp; FAQ</a>
     </div>
   </div>
@@ -285,7 +287,8 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
     <div class="step"><div class="step-n">1</div><div class="step-b"><div class="step-t">Locate the ERP file</div><div class="step-x">Find <code>Inventory &amp; Purchasing.html</code> on your computer, shared folder, USB drive, or the URL provided by your administrator.</div></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-b"><div class="step-t">Open in Google Chrome</div><div class="step-x">Double-click the file. It opens directly in the browser — no installation needed. On mobile, transfer the file and open with Chrome or Safari.</div></div></div>
     <div class="step"><div class="step-n">3</div><div class="step-b"><div class="step-t">Grant camera permission (if prompted)</div><div class="step-x">Click <strong>Allow</strong> when the browser asks for camera access. Required for barcode scanning and product photo capture. Can be granted later via browser settings.</div></div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-b"><div class="step-t">Data loads automatically</div><div class="step-x">Previous data is restored from browser storage automatically. A console message confirms: "Restored saved data from [date/time]"</div></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-b"><div class="step-t">Login Screen appears</div><div class="step-x">Select your user account from the on-screen list, then enter your 4-digit PIN on the numpad. The system logs you in automatically after the 4th digit. See <a href="#login" style="color:var(--accent)">Chapter 1b — Login &amp; Branch Access</a> for full details.</div></div></div>
+    <div class="step"><div class="step-n">5</div><div class="step-b"><div class="step-t">Data loads automatically</div><div class="step-x">After login, previous data is restored from browser storage. Your name, role, and active branch appear in the top bar and sidebar footer.</div></div></div>
   </div>
 
   <h2>Interface Layout</h2>
@@ -330,6 +333,51 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
   </div>
 </section>
 
+<!-- ══════════════ SECTION 1b: LOGIN & BRANCH ACCESS ══════════════ -->
+<section id="login">
+  <div class="sec-eye" style="background:var(--accent-s);color:var(--accent)">🔐 Chapter 1b</div>
+  <h1 class="sec-t">Login &amp; Branch Access</h1>
+  <p class="sec-d">Everose ERP uses a PIN-based multi-user login system. Each account is tied to a branch. The Managing Director can access all branches via a topbar dropdown.</p>
+
+  <h2>User Accounts Table</h2>
+  <div class="t-wrap">
+    <table>
+      <thead><tr><th>User</th><th>Role</th><th>PIN</th><th>Branch Access</th><th>POS Warehouse</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Eric Thegreat</strong></td><td>Managing Director</td><td><code>1234</code></td><td><span class="b ok">All Branches (dropdown)</span></td><td>Selected branch</td></tr>
+        <tr><td><strong>Ana Dela Cruz</strong></td><td>Cashier — Iligan</td><td><code>1111</code></td><td>WH-ILIGAN only</td><td>WH-ILIGAN</td></tr>
+        <tr><td><strong>Ben Santos</strong></td><td>Cashier — Ozamis</td><td><code>2222</code></td><td>WH-OZAMIS only</td><td>WH-OZAMIS</td></tr>
+        <tr><td><strong>Carla Reyes</strong></td><td>Cashier — Dumaguete</td><td><code>3333</code></td><td>WH-DUMAGUETE only</td><td>WH-DUMAGUETE</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Login Flow</h2>
+  <div class="steps">
+    <div class="step"><div class="step-n">1</div><div class="step-b"><div class="step-t">Login Screen on startup</div><div class="step-x">The login screen appears before any ERP screen. If a session is stored in <code>localStorage</code> key <code>everose_auth_v1</code>, the user is restored automatically and login is skipped.</div></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-b"><div class="step-t">Select account</div><div class="step-x">Four user cards are shown. Clicking a card sets the selected user and reveals the PIN numpad.</div></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-b"><div class="step-t">Enter 4-digit PIN</div><div class="step-x">Auto-submits after the 4th digit. Wrong PIN triggers a CSS shake animation and clears the input. No lockout policy — retry is immediate.</div></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-b"><div class="step-t">Session stored</div><div class="step-x">On success, the user object is saved to <code>localStorage</code> so the session persists on page reload. A toast confirms: <em>"Signed in as [Name] · [Role]"</em>.</div></div></div>
+  </div>
+
+  <h2>Branch Access &amp; POS Routing</h2>
+  <p>The active branch (warehouse) is determined by the login session:</p>
+  <ul>
+    <li><strong>Cashier login:</strong> Active branch is fixed to their assigned warehouse. A badge in the topbar shows the branch name. The POS deducts stock from that warehouse.</li>
+    <li><strong>Managing Director login:</strong> Active branch defaults to WH-ILIGAN but can be switched via a dropdown in the topbar. All screens (inventory views, POS, receipts) update to reflect the selected branch.</li>
+  </ul>
+
+  <div class="box note"><div class="box-i">ℹ️</div><div class="box-b"><div class="box-t">Receipt Attribution</div><div class="box-x">Each completed sale stores <code>cashier: currentUser.name</code> and <code>wh: activeBranch</code> in the sale data. The printed receipt displays the cashier's name and the branch warehouse name, providing a clear audit trail per transaction.</div></div></div>
+
+  <h2>Sign Out</h2>
+  <p>Click the <strong>✕ (sign out)</strong> button next to the user name in the sidebar footer. This clears <code>everose_auth_v1</code> from localStorage and returns to the Login Screen. Recommend signing out when leaving a shared device unattended.</p>
+
+  <div class="box warn"><div class="box-i">⚠️</div><div class="box-b"><div class="box-t">PIN Security Note</div><div class="box-x">PINs are stored in the <code>USERS</code> constant in the HTML source. For production deployments, move user credentials to a server-side authentication layer. The current PIN system is suitable for trusted-device, internal-use scenarios only.</div></div></div>
+
+  <h2>Updating User PINs (Admin)</h2>
+  <p>To change a PIN or add/remove users: open the HTML file in a text editor, locate the <code>const USERS = [...]</code> array near line 6462, and update the <code>pin</code> field for the relevant user. Save the file. All devices using that file will pick up the change on the next page reload.</p>
+</section>
+
 <!-- ══════════════ SECTION 2: DASHBOARD ══════════════ -->
 <section id="dashboard">
   <div class="sec-eye" style="background:var(--accent-s);color:var(--accent)">📊 Chapter 2</div>
@@ -352,6 +400,38 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
     </table>
   </div>
 
+  <h2>Sales Performance Card</h2>
+  <p>Below the KPI strip, the <strong>Sales Performance</strong> card shows real-time sales analytics with selectable time periods. All metrics derive from <code>DATA.MOVEMENTS</code> entries where <code>type === "Sale"</code>.</p>
+
+  <div class="t-wrap">
+    <table>
+      <thead><tr><th>Metric</th><th>Formula</th><th>Period Scope</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Revenue</strong></td><td>Sum of sale amounts (qty × retail price)</td><td>Filtered by selected period</td></tr>
+        <tr><td><strong>Gross Profit</strong></td><td>Revenue − (qty × unit cost)</td><td>Filtered by selected period</td></tr>
+        <tr><td><strong>Margin %</strong></td><td>(Gross Profit / Revenue) × 100</td><td>Filtered by selected period</td></tr>
+        <tr><td><strong>Transactions</strong></td><td>Count of unique sale IDs (SO-XXXX refs)</td><td>Filtered by selected period</td></tr>
+        <tr><td><strong>Avg Order Value</strong></td><td>Revenue / transaction count</td><td>Filtered by selected period</td></tr>
+        <tr><td><strong>Avg Daily Sales</strong></td><td>Revenue / number of days in period</td><td>Filtered by selected period</td></tr>
+        <tr><td><strong>14-Day Trend</strong></td><td>Daily revenue bar chart, last 14 days</td><td>Always last 14 days (period-independent)</td></tr>
+        <tr><td><strong>Top 5 Products</strong></td><td>Ranked by revenue desc</td><td>Filtered by selected period</td></tr>
+        <tr><td><strong>By Branch</strong></td><td>Revenue per warehouse ID</td><td>Filtered by selected period</td></tr>
+        <tr><td><strong>Category Margins</strong></td><td>Revenue, GP, margin % per product category</td><td>Filtered by selected period</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Period Options</h3>
+  <ul>
+    <li><strong>Today</strong> — movements with <code>days === 0</code></li>
+    <li><strong>This Week</strong> — movements with <code>days &lt;= 6</code></li>
+    <li><strong>This Month</strong> — movements with <code>days &lt;= 29</code></li>
+    <li><strong>Quarter</strong> — movements with <code>days &lt;= 89</code></li>
+  </ul>
+
+  <h2>Location Cards</h2>
+  <p>One card per warehouse (WH-ILIGAN, WH-OZAMIS, WH-DUMAGUETE). Each shows: On Hand units, active SKU count, total units sold from that branch, and total sales revenue from that branch.</p>
+
   <h2>Reorder AI</h2>
   <p>The <strong>⚡ Reorder AI</strong> button analyzes stock levels and reorder thresholds to generate purchase order suggestions automatically. It considers:</p>
   <ul>
@@ -367,7 +447,7 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
 <section id="pos">
   <div class="sec-eye" style="background:var(--ok-s);color:var(--ok)">🏪 Chapter 3</div>
   <h1 class="sec-t">Point of Sale</h1>
-  <p class="sec-d">Process customer transactions at the Ozamis City register. Supports barcode scanning, multiple payment methods, credit sales, installment financing, and printed receipts.</p>
+  <p class="sec-d">Process customer transactions at the active branch register. The POS automatically uses the warehouse of the logged-in user's branch. Supports barcode scanning, multiple payment methods, credit sales, installment financing, and printed receipts.</p>
 
   <h2>Payment Methods Supported</h2>
   <div class="grid-4">
@@ -388,7 +468,7 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
     <div class="step"><div class="step-n">3</div><div class="step-b"><div class="step-t">Select customer (optional)</div><div class="step-x">Search by name or phone. Default is "Walk-in Customer." Account customers have their AR balance checked against credit limit when using In-House Credit.</div></div></div>
     <div class="step"><div class="step-n">4</div><div class="step-b"><div class="step-t">Click Proceed to Payment</div><div class="step-x">Payment modal opens with total shown prominently.</div></div></div>
     <div class="step"><div class="step-n">5</div><div class="step-b"><div class="step-t">Select payment method(s) &amp; enter amount</div><div class="step-x">Select one or multiple payment methods. For cash, enter the tendered amount — change is computed automatically.</div></div></div>
-    <div class="step"><div class="step-n">6</div><div class="step-b"><div class="step-t">Complete Sale</div><div class="step-x">System: (a) deducts stock from WH-OZAMIS, (b) posts sales journal entry, (c) updates customer AR if credit sale, (d) displays receipt. Sale ID is generated (e.g., <code>SALE-2481</code>).</div></div></div>
+    <div class="step"><div class="step-n">6</div><div class="step-b"><div class="step-t">Complete Sale</div><div class="step-x">System: (a) deducts stock from the active branch warehouse (<code>activeBranch</code>), (b) posts sales journal entry, (c) updates customer AR if credit sale, (d) displays receipt with cashier name and branch. Sale ID is generated (e.g., <code>SO-12481</code>).</div></div></div>
     <div class="step"><div class="step-n">7</div><div class="step-b"><div class="step-t">Print receipt</div><div class="step-x">Click <strong>Print Receipt</strong>. Browser print dialog opens. Select printer or Save as PDF. Receipt shows itemized products, payment breakdown, customer name, and store info.</div></div></div>
   </div>
 
@@ -653,25 +733,62 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
 <section id="reports">
   <div class="sec-eye" style="background:var(--ok-s);color:var(--ok)">📈 Chapter 10</div>
   <h1 class="sec-t">Reports &amp; Analytics</h1>
-  <p class="sec-d">Six built-in report cards with Excel export. All reports are generated in real-time from live transaction data.</p>
+  <p class="sec-d">The Reports screen is organized into three tabs: Sales &amp; Revenue, Inventory, and Purchasing. All data is computed in real-time from live transaction records.</p>
 
+  <h2>Tab 1 — Sales &amp; Revenue</h2>
+  <p>Powered by <code>DATA.MOVEMENTS</code> entries where <code>type === "Sale"</code>. Covers the full historical dataset (no period filter on this tab — use the Dashboard for period-filtered views).</p>
+  <div class="t-wrap">
+    <table>
+      <thead><tr><th>Report Element</th><th>What it shows</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td><strong>KPI Summary Tiles</strong></td><td>Units sold, total revenue, gross profit, margin %, transaction count, avg order value, avg daily</td><td>All sale movements</td></tr>
+        <tr><td><strong>30-Day Trend Chart</strong></td><td>Bar chart of daily revenue for last 30 days. Today highlighted.</td><td>Movements filtered by <code>days &lt;= 29</code></td></tr>
+        <tr><td><strong>Top 8 by Revenue</strong></td><td>Best-selling SKUs ranked by total revenue. Columns: Rank, Product, SKU, Units, Revenue.</td><td>Aggregated sale movements</td></tr>
+        <tr><td><strong>Top 8 by Units</strong></td><td>Best-selling SKUs ranked by units sold.</td><td>Aggregated sale movements</td></tr>
+        <tr><td><strong>Category Margin Table</strong></td><td>Per category: Units Sold · Revenue · Gross Profit · Margin % (color-coded)</td><td>Sale movements joined to product cost/category</td></tr>
+        <tr><td><strong>By Warehouse</strong></td><td>Revenue per branch warehouse</td><td>Sale movements filtered by <code>wh</code> field</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Margin Color Coding</h3>
+  <div class="t-wrap">
+    <table>
+      <thead><tr><th>Color</th><th>Margin %</th><th>Interpretation</th></tr></thead>
+      <tbody>
+        <tr><td><span class="b ok">Green</span></td><td>≥ 40%</td><td>Strong — target maintained</td></tr>
+        <tr><td><span class="b warn">Amber</span></td><td>20–39%</td><td>Acceptable — monitor pricing</td></tr>
+        <tr><td><span class="b danger">Red</span></td><td>&lt; 20%</td><td>Low — review supplier cost or pricing</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Tab 2 — Inventory</h2>
   <div class="t-wrap">
     <table>
       <thead><tr><th>Report</th><th>Data shown</th><th>Export</th></tr></thead>
       <tbody>
-        <tr><td><strong>Top Products</strong></td><td>Best-selling SKUs ranked by revenue. Columns: SKU, Name, Units sold, Total revenue.</td><td>XLSX</td></tr>
-        <tr><td><strong>Inventory Valuation</strong></td><td>Stock value by category. Cost vs. retail. Total on-hand value.</td><td>XLSX</td></tr>
-        <tr><td><strong>Supplier Spend</strong></td><td>Total purchasing spend per supplier. Based on received PO amounts.</td><td>XLSX</td></tr>
-        <tr><td><strong>Sales by Customer</strong></td><td>Revenue per account customer. Identifies top buyers.</td><td>XLSX</td></tr>
-        <tr><td><strong>Low Stock Alert</strong></td><td>All products at/below reorder threshold. Prioritized by urgency.</td><td>XLSX</td></tr>
-        <tr><td><strong>Movement History</strong></td><td>Full audit log: sales, receipts, adjustments, transfers per SKU.</td><td>XLSX</td></tr>
+        <tr><td><strong>Inventory Valuation</strong></td><td>Total stock value per category. Cost vs. retail value, margin comparison.</td><td>XLSX</td></tr>
+        <tr><td><strong>Low Stock Alert</strong></td><td>All SKUs at or below reorder point. Sorted by urgency (Out → Low → Watch).</td><td>XLSX</td></tr>
+        <tr><td><strong>Movement History</strong></td><td>Full audit log: every sale, receipt, adjustment, transfer per SKU with timestamps.</td><td>XLSX</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Tab 3 — Purchasing</h2>
+  <div class="t-wrap">
+    <table>
+      <thead><tr><th>Report</th><th>Data shown</th><th>Export</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Supplier Spend</strong></td><td>Total received PO value per supplier. Identifies largest spend relationships.</td><td>XLSX</td></tr>
+        <tr><td><strong>Sales by Customer</strong></td><td>Revenue per account customer. Identifies top buyers for relationship management.</td><td>XLSX</td></tr>
       </tbody>
     </table>
   </div>
 
   <h2>Exporting to Excel</h2>
   <div class="steps">
-    <div class="step"><div class="step-n">1</div><div class="step-b"><div class="step-t">Open the desired report</div><div class="step-x">Click Reports in sidebar. Select the report tab.</div></div></div>
+    <div class="step"><div class="step-n">1</div><div class="step-b"><div class="step-t">Open the desired tab in Reports</div><div class="step-x">Click Reports in sidebar. Select Sales &amp; Revenue, Inventory, or Purchasing tab.</div></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-b"><div class="step-t">Click "Export XLSX"</div><div class="step-x">Top-right of the report card. Excel file downloads instantly with formatted columns and headers.</div></div></div>
   </div>
 </section>
@@ -903,35 +1020,62 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
 <!-- ══════════════ ADMIN SECTION A3: ROLES ══════════════ -->
 <section id="roles">
   <div class="sec-eye" style="background:rgba(251,191,36,.12);color:var(--warn)">👤 Admin A3</div>
-  <h1 class="sec-t">User Roles &amp; Access Guide</h1>
-  <p class="sec-d">The ERP does not enforce login-based permissions — it is a shared system with a single user session. Use this guide to define who should access which modules in your organization.</p>
+  <h1 class="sec-t">User Accounts &amp; Access Control</h1>
+  <p class="sec-d">Everose ERP uses a PIN-based login system with four named accounts. Each cashier is restricted to their branch; the Managing Director has full cross-branch access.</p>
 
-  <div class="box note"><div class="box-i">ℹ️</div><div class="box-b"><div class="box-t">Note on Access Control</div><div class="box-x">The current version of Everose ERP runs as a single-user application per browser. For multi-user scenarios with role enforcement, consider hosting the app on a server with an authentication layer, or define operational procedures for who uses which functions.</div></div></div>
-
-  <h2>Recommended Role Assignments</h2>
+  <h2>System User Accounts</h2>
   <div class="t-wrap">
     <table>
-      <thead><tr><th>Module</th><th><span class="role cashier">Cashier</span></th><th><span class="role wh">Warehouse</span></th><th><span class="role mgr">Manager</span></th><th><span class="role admin">Admin</span></th></tr></thead>
+      <thead><tr><th>ID</th><th>Name</th><th>Role</th><th>PIN</th><th>Branch (<code>wh</code>)</th><th>Branch Switch</th></tr></thead>
       <tbody>
-        <tr><td>Dashboard (view)</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Point of Sale</td><td>✅</td><td>—</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Inventory (view)</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Inventory (add/edit products)</td><td>—</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Inventory (delete products)</td><td>—</td><td>—</td><td>—</td><td>✅</td></tr>
-        <tr><td>Stock Adjustments</td><td>—</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Purchase Orders (create)</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Receiving (GRN)</td><td>—</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Customers (view)</td><td>✅</td><td>—</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Customers (add/edit)</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Accounting (view)</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Reports (view &amp; export)</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Notifications (view)</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Notification Channel Config</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Data Backup / Export</td><td>—</td><td>—</td><td>—</td><td>✅</td></tr>
-        <tr><td>Clear / Import Data</td><td>—</td><td>—</td><td>—</td><td>✅</td></tr>
+        <tr><td><code>U-001</code></td><td><strong>Eric Thegreat</strong></td><td>Managing Director</td><td><code>1234</code></td><td><code>"all"</code></td><td>✅ Dropdown switcher</td></tr>
+        <tr><td><code>U-002</code></td><td><strong>Ana Dela Cruz</strong></td><td>Cashier — Iligan</td><td><code>1111</code></td><td><code>"WH-ILIGAN"</code></td><td>— Fixed badge</td></tr>
+        <tr><td><code>U-003</code></td><td><strong>Ben Santos</strong></td><td>Cashier — Ozamis</td><td><code>2222</code></td><td><code>"WH-OZAMIS"</code></td><td>— Fixed badge</td></tr>
+        <tr><td><code>U-004</code></td><td><strong>Carla Reyes</strong></td><td>Cashier — Dumaguete</td><td><code>3333</code></td><td><code>"WH-DUMAGUETE"</code></td><td>— Fixed badge</td></tr>
       </tbody>
     </table>
   </div>
+
+  <h2>Functional Access by Role</h2>
+  <div class="t-wrap">
+    <table>
+      <thead><tr><th>Module / Function</th><th>Managing Director</th><th>Cashier</th></tr></thead>
+      <tbody>
+        <tr><td>Dashboard — all KPIs &amp; analytics</td><td>✅ All branches</td><td>✅ Own branch data</td></tr>
+        <tr><td>Point of Sale</td><td>✅ Any branch</td><td>✅ Own branch only</td></tr>
+        <tr><td>Inventory — view</td><td>✅ All branches</td><td>✅ All branches (view)</td></tr>
+        <tr><td>Inventory — add/edit/delete products</td><td>✅</td><td>Operational procedure only</td></tr>
+        <tr><td>Stock Adjustments</td><td>✅</td><td>Operational procedure only</td></tr>
+        <tr><td>Purchase Orders — create/manage</td><td>✅</td><td>—</td></tr>
+        <tr><td>Receiving / GRN</td><td>✅</td><td>—</td></tr>
+        <tr><td>Customers — view</td><td>✅</td><td>✅</td></tr>
+        <tr><td>Customers — add/edit</td><td>✅</td><td>—</td></tr>
+        <tr><td>Accounting (view)</td><td>✅</td><td>✅</td></tr>
+        <tr><td>Reports (view &amp; export)</td><td>✅</td><td>✅</td></tr>
+        <tr><td>Notifications (view)</td><td>✅</td><td>✅</td></tr>
+        <tr><td>Notification Channel Config</td><td>✅</td><td>—</td></tr>
+        <tr><td>Data Backup / Export</td><td>✅</td><td>—</td></tr>
+        <tr><td>Clear / Import Data</td><td>✅ (admin task)</td><td>—</td></tr>
+        <tr><td>Branch Switcher</td><td>✅ Dropdown</td><td>— Fixed badge</td></tr>
+        <tr><td>Sign Out</td><td>✅</td><td>✅</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>How to Update a PIN</h2>
+  <div class="steps">
+    <div class="step"><div class="step-n">1</div><div class="step-b"><div class="step-t">Open the HTML file in a text editor</div><div class="step-x">Right-click <code>Inventory &amp; Purchasing.html</code> → Open with → Notepad (Windows) or TextEdit (Mac). Use VS Code for a better experience.</div></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-b"><div class="step-t">Find the USERS array</div><div class="step-x">Search for <code>const USERS = [</code> (around line 6462). Each entry has <code>id, name, role, pin, wh</code> fields.</div></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-b"><div class="step-t">Change the pin field</div><div class="step-x">Update the <code>pin: "XXXX"</code> value. PINs must be exactly 4 numeric characters. Example: <code>pin: "5678"</code>.</div></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-b"><div class="step-t">Save and refresh</div><div class="step-x">Save the HTML file. Reload the page in the browser. The new PIN is active immediately — no restart required.</div></div></div>
+  </div>
+
+  <h2>How to Add a New User</h2>
+  <p>Add a new entry to the <code>USERS</code> array with a unique <code>id</code>, <code>name</code>, <code>role</code>, 4-digit <code>pin</code>, and <code>wh</code> (warehouse ID or <code>"all"</code> for full access). Example:</p>
+  <pre style="background:var(--elev2);border:1px solid var(--line);border-radius:8px;padding:14px 16px;font-size:12.5px;color:var(--accent);overflow-x:auto;margin:12px 0">{ id: "U-005", name: "Dan Soriano", role: "Cashier — Iligan 2", pin: "4444", wh: "WH-ILIGAN" },</pre>
+  <p>Save the file and reload. The new user appears on the Login Screen immediately.</p>
+
+  <div class="box warn"><div class="box-i">⚠️</div><div class="box-b"><div class="box-t">Security Reminder</div><div class="box-x">PINs are stored in plain text inside the HTML file. For sensitive deployments, implement server-side authentication. The PIN system is designed for trusted internal devices and low-risk operational environments. Do not use the same PIN as your bank or personal accounts.</div></div></div>
 </section>
 
 <!-- ══════════════ ADMIN SECTION A4: DEPLOYMENT ══════════════ -->

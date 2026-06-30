@@ -157,6 +157,7 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
 @keyframes slideInR { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes pop { from { transform: scale(.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes notifPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-7px)} 50%{transform:translateX(7px)} 80%{transform:translateX(-4px)} }
 .fade { animation: fadeIn .22s ease both; }
 
 </style>
@@ -1406,7 +1407,7 @@ const NAV = [
 const NAV_DISABLED = [
 ];
 
-function Sidebar({ route, setRoute, collapsed, alertCount, mobileOpen, setMobileOpen }) {
+function Sidebar({ route, setRoute, collapsed, alertCount, mobileOpen, setMobileOpen, currentUser, onLogout }) {
   const item = (n, disabled) => {
     const active = route === n.id;
     return (
@@ -1463,11 +1464,21 @@ function Sidebar({ route, setRoute, collapsed, alertCount, mobileOpen, setMobile
       </nav>
       <div style={{ padding: 8, borderTop: "1px solid var(--line-soft)", flex: "none" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: collapsed ? 0 : "6px 8px", justifyContent: collapsed ? "center" : "flex-start" }}>
-          <Avatar name="Dana Reyes" size={collapsed ? 30 : 32} />
-          {!collapsed && <div style={{ lineHeight: 1.2, minWidth: 0 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Dana Reyes</div>
-            <div style={{ fontSize: 11, color: "var(--ink-3)" }}>Warehouse Mgr</div>
-          </div>}
+          <Avatar name={currentUser ? currentUser.name : "User"} size={collapsed ? 30 : 32} />
+          {!collapsed && currentUser && (
+            <div style={{ lineHeight: 1.2, minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{currentUser.name}</div>
+              <div style={{ fontSize: 11, color: "var(--ink-3)" }}>{currentUser.role}</div>
+            </div>
+          )}
+          {!collapsed && onLogout && (
+            <button title="Sign out" onClick={onLogout}
+              style={{ background: "none", border: "1px solid transparent", cursor: "pointer", color: "var(--ink-3)", display: "flex", alignItems: "center", padding: 5, borderRadius: 7, flex: "none", transition: "color .15s,border-color .15s" }}
+              onMouseEnter={e => { e.currentTarget.style.color = "var(--low)"; e.currentTarget.style.borderColor = "var(--low)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "var(--ink-3)"; e.currentTarget.style.borderColor = "transparent"; }}>
+              <Icon name="x" size={14} />
+            </button>
+          )}
         </div>
         {!collapsed && (
           <div style={{ marginTop: 8, paddingTop: 10, borderTop: "1px solid var(--line-soft)", display: "flex", flexDirection: "column", gap: 6 }}>
@@ -3966,7 +3977,8 @@ const { useState: useStatePOS, useMemo: useMemoPOS, useRef: useRefPOS } = React;
 const TAX_RATE = 0.08;
 const POS_WH = "WH-OZAMIS";
 
-function POSScreen({ onComplete, toast, onPrint }) {
+function POSScreen({ onComplete, toast, onPrint, wh: branchWh, cashierName }) {
+  const posWh = branchWh || POS_WH;
   const [cart, setCart] = useStatePOS([]);
   const [customer, setCustomer] = useStatePOS(DATA.CUSTOMERS[0]);
   const [custQuery, setCustQuery] = useStatePOS("");
@@ -4007,7 +4019,7 @@ function POSScreen({ onComplete, toast, onPrint }) {
 
   function charge() {
     const saleId = "SO-" + Math.floor(Math.random() * 9000 + 10500);
-    const data = { saleId, cart: [...cart], customer, subtotal, discount, tax, total, payments: [...payments], change, units, wh: POS_WH };
+    const data = { saleId, cart: [...cart], customer, subtotal, discount, tax, total, payments: [...payments], change, units, wh: posWh, cashier: cashierName || "Cashier" };
     onComplete(data);
     setReceipt(data);
   }
@@ -4585,8 +4597,7 @@ Object.assign(window, { AccountingScreen });
 </script>
 
 <script type="text/babel">
-/* reports.jsx — Reports module: sales, inventory valuation, stock health,
-   purchasing & receivables. Computes from live DATA. Exports: ReportsScreen */
+/* reports.jsx — comprehensive sales, inventory & purchasing analytics */
 const { useState: useStateRpt, useMemo: useMemoRpt } = React;
 
 function BarList({ rows, color, fmt }) {
@@ -4622,163 +4633,296 @@ function RCard({ title, icon, sub, action, children, span }) {
   );
 }
 
+function MarginPill({ pct }) {
+  const c = pct >= 40 ? "var(--ok)" : pct >= 20 ? "var(--watch)" : "var(--low)";
+  return <span className="mono tnum" style={{ fontSize: 11, fontWeight: 700, color: c }}>{pct}%</span>;
+}
+
 function ReportsScreen({ rev, toast, onPrint }) {
   const [period, setPeriod] = useStateRpt("mtd");
+  const [tab, setTab] = useStateRpt("sales");
+
   const data = useMemoRpt(() => {
     const maxDays = { wtd: 7, mtd: 30, qtd: 90, ytd: 365 }[period] || 30;
-    // sales from movements
-    const salesByCat = {}, salesByWh = {};
-    let unitsSold = 0, salesRevenue = 0;
-    DATA.MOVEMENTS.filter((m) => m.type === "Sale" && m.days <= maxDays).forEach((m) => {
+
+    /* ── Sales aggregation ── */
+    let unitsSold = 0, salesRevenue = 0, salesCost = 0;
+    const salesByCat = {}, salesByWh = {}, prodMap = {}, dailyRev = {};
+    DATA.MOVEMENTS.filter((m) => m.type === "Sale" && Math.floor(m.days) <= maxDays).forEach((m) => {
       const p = DATA.pid(m.sku); if (!p) return;
-      const u = Math.abs(m.qty); unitsSold += u;
-      const revv = u * p.price;
-      salesRevenue += revv;
-      salesByCat[p.category] = (salesByCat[p.category] || 0) + revv;
+      const u = Math.abs(m.qty), rev = u * p.price, cost = u * p.cost;
+      unitsSold += u; salesRevenue += rev; salesCost += cost;
       const wn = (DATA.WAREHOUSES.find((w) => w.id === m.wh) || {}).short || m.wh;
-      salesByWh[wn] = (salesByWh[wn] || 0) + revv;
+      salesByCat[p.category] = salesByCat[p.category] || { rev: 0, cost: 0, units: 0 };
+      salesByCat[p.category].rev += rev; salesByCat[p.category].cost += cost; salesByCat[p.category].units += u;
+      salesByWh[wn] = (salesByWh[wn] || 0) + rev;
+      if (!prodMap[p.sku]) prodMap[p.sku] = { p, rev: 0, units: 0 };
+      prodMap[p.sku].rev += rev; prodMap[p.sku].units += u;
+      const d = Math.floor(m.days);
+      dailyRev[d] = (dailyRev[d] || 0) + rev;
     });
-    // top products by sales revenue
-    const prodRev = {};
-    DATA.MOVEMENTS.filter((m) => m.type === "Sale" && m.days <= maxDays).forEach((m) => { const p = DATA.pid(m.sku); if (p) prodRev[p.sku] = (prodRev[p.sku] || 0) + Math.abs(m.qty) * p.price; });
-    const topProducts = Object.entries(prodRev).map(([sku, v]) => ({ p: DATA.pid(sku), v })).sort((a, b) => b.v - a.v).slice(0, 6);
-    // inventory valuation
+
+    /* trend: oldest → today */
+    const trendN = Math.min(maxDays, 30);
+    const trend = Array.from({ length: trendN }, (_, i) => ({
+      day: trendN - 1 - i, v: dailyRev[trendN - 1 - i] || 0, today: i === trendN - 1,
+    }));
+
+    /* unique transactions by saleId ref */
+    const saleRefs = new Set();
+    DATA.MOVEMENTS.filter(m => m.type === "Sale" && Math.floor(m.days) <= maxDays && m.ref).forEach(m => saleRefs.add(m.ref));
+    const txCount = saleRefs.size;
+    const avgOrderValue = txCount > 0 ? salesRevenue / txCount : 0;
+    const avgDaily = trendN > 0 ? salesRevenue / trendN : 0;
+
+    const topProducts = Object.values(prodMap).sort((a, b) => b.rev - a.rev).slice(0, 8);
+    const topByUnits  = Object.values(prodMap).sort((a, b) => b.units - a.units).slice(0, 8);
+    const catRows = Object.entries(salesByCat).map(([cat, d]) => ({
+      cat, rev: d.rev, cost: d.cost, units: d.units,
+      gp: d.rev - d.cost,
+      margin: d.rev > 0 ? Math.round((d.rev - d.cost) / d.rev * 100) : 0,
+    })).sort((a, b) => b.rev - a.rev);
+    const whRows = Object.entries(salesByWh).map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v);
+    const maxTrend = Math.max(...trend.map(t => t.v), 1);
+
+    /* ── Inventory ── */
     let costVal = 0, retailVal = 0; const valByCat = {};
-    DATA.PRODUCTS.forEach((p) => { costVal += p.cost * p.total; retailVal += p.price * p.total; valByCat[p.category] = (valByCat[p.category] || 0) + p.cost * p.total; });
-    // stock health
+    DATA.PRODUCTS.forEach((p) => {
+      costVal += p.cost * p.total; retailVal += p.price * p.total;
+      valByCat[p.category] = (valByCat[p.category] || 0) + p.cost * p.total;
+    });
     const health = { ok: 0, watch: 0, low: 0, out: 0 };
     DATA.PRODUCTS.forEach((p) => health[statusFromTotal(p.total, p.reorder * 2)]++);
-    // purchasing: spend by supplier (received), open commitment
+    const valRows = Object.entries(valByCat).map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v).slice(0, 8);
+
+    /* ── Purchasing ── */
     const spend = {}; let openCommit = 0;
     DATA.POS.forEach((po) => {
       po.lines.forEach((l) => { spend[po.supplierId] = (spend[po.supplierId] || 0) + l.recv * l.cost; });
-      if (po.status === "Open" || po.status === "Partial") openCommit += po.lines.reduce((s, l) => s + (l.qty - l.recv) * l.cost, 0);
+      if (po.status === "Open" || po.status === "Partial")
+        openCommit += po.lines.reduce((s, l) => s + (l.qty - l.recv) * l.cost, 0);
     });
-    const supplierSpend = Object.entries(spend).filter(([, v]) => v > 0).map(([id, v]) => ({ k: (DATA.SUPPLIERS.find((s) => s.id === id) || {}).name, v })).sort((a, b) => b.v - a.v);
+    const supplierSpend = Object.entries(spend).filter(([, v]) => v > 0)
+      .map(([id, v]) => ({ k: (DATA.SUPPLIERS.find((s) => s.id === id) || {}).name, v }))
+      .sort((a, b) => b.v - a.v);
     const ar = DATA.CUSTOMERS.reduce((s, c) => s + c.balance, 0);
+
+    const grossProfit = salesRevenue - salesCost;
+    const grossMargin = salesRevenue > 0 ? Math.round(grossProfit / salesRevenue * 100) : 0;
+    const inventoryMargin = retailVal > 0 ? Math.round((retailVal - costVal) / retailVal * 100) : 0;
+
     return {
-      unitsSold, salesRevenue, costVal, retailVal, health, openCommit, ar,
-      catRows: Object.entries(salesByCat).map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v),
-      whRows: Object.entries(salesByWh).map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v),
-      valRows: Object.entries(valByCat).map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v).slice(0, 6),
-      topProducts, supplierSpend,
+      unitsSold, salesRevenue, salesCost, grossProfit, grossMargin, txCount, avgOrderValue, avgDaily,
+      catRows, whRows, topProducts, topByUnits, trend, maxTrend, trendN,
+      costVal, retailVal, inventoryMargin, health, valRows,
+      openCommit, supplierSpend, ar,
     };
   }, [rev, period]);
 
-  const grossMargin = data.retailVal > 0 ? Math.round((data.retailVal - data.costVal) / data.retailVal * 100) : 0;
-
-  const kpis = [
-    { label: "Sales revenue", value: money(data.salesRevenue), sub: "recorded movements", c: "var(--ok)", icon: "chart" },
-    { label: "Units sold", value: num(data.unitsSold), sub: "across all stores", c: "var(--ink)", icon: "box" },
-    { label: "Gross margin", value: grossMargin + "%", sub: "blended at retail", c: "var(--accent-text)", icon: "gauge" },
-    { label: "Open PO commitment", value: money(data.openCommit), sub: "inbound at cost", c: "var(--watch)", icon: "truck" },
-  ];
-
-  const exportBtn = (name, tableRows, cols) => (
+  const exportBtn = (name, rows, cols) => (
     <button className="btn ghost sm" style={{ color: "var(--accent-text)" }}
       onClick={() => {
-        if (tableRows && cols && window.downloadCSV) {
-          downloadCSV(name, cols, tableRows);
-          toast && toast(name + " downloaded as CSV", "ok");
-        } else if (onPrint) {
-          onPrint({ kind: "report", title: name, data: { title: name, kpis: kpis.map(k => ({ label: k.label, value: k.value })), tables: tableRows && cols ? [{ title: name, cols, rows: tableRows }] : [] } });
-        } else {
-          toast && toast(name + " exported", "ok");
-        }
+        if (rows && cols && window.downloadCSV) { downloadCSV(name, cols, rows); toast && toast(name + " downloaded as CSV", "ok"); }
+        else { toast && toast(name + " exported", "ok"); }
       }}><Icon name="arrowR" size={12} />Export CSV</button>
   );
 
+  const TABS = [{ id: "sales", label: "Sales & Revenue" }, { id: "inventory", label: "Inventory" }, { id: "purchasing", label: "Purchasing" }];
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn .2s ease both" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <Segmented value={period} onChange={setPeriod} options={[{ value: "wtd", label: "Week" }, { value: "mtd", label: "Month" }, { value: "qtd", label: "Quarter" }, { value: "ytd", label: "Year" }]} />
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <Segmented value={period} onChange={setPeriod}
+          options={[{ value: "wtd", label: "Week" }, { value: "mtd", label: "Month" }, { value: "qtd", label: "Quarter" }, { value: "ytd", label: "Year" }]} />
         <span style={{ fontSize: 12, color: "var(--ink-3)" }}>Period to date · all locations</span>
-        <button className="btn sm" style={{ marginLeft: "auto" }} onClick={() => {
-          if (onPrint) {
-            onPrint({ kind: "report", title: "Full Report Pack — " + new Date().toLocaleDateString(), data: {
-              title: "Full Report Pack",
-              kpis: kpis.map(k => ({ label: k.label, value: k.value })),
-              tables: [
-                { title: "Sales by Category", cols: ["Category", "Revenue"], rows: data.catRows.map(r=>[r.k, money(r.v)]) },
-                { title: "Sales by Location", cols: ["Location", "Revenue"], rows: data.whRows.map(r=>[r.k, money(r.v)]) },
-                { title: "Top Products by Revenue", cols: ["SKU", "Product", "Revenue"], rows: data.topProducts.map(({p,v})=>[p.sku, p.name, money(v)]) },
-                { title: "Inventory Valuation by Category", cols: ["Category", "Cost Value"], rows: data.valRows.map(r=>[r.k, money(r.v)]) },
-                { title: "Supplier Spend (received at cost)", cols: ["Supplier", "Amount"], rows: data.supplierSpend.map(r=>[r.k, money(r.v)]) },
-              ]
-            }});
-          } else if (window.doExportXLSX) {
-            doExportXLSX(); toast && toast("Full data exported to Excel", "ok");
-          } else {
-            toast && toast("Full report pack exported", "ok");
-          }
-        }}><Icon name="receipt" size={14} />Export pack</button>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          {TABS.map(t => (
+            <button key={t.id} className={"btn sm" + (tab === t.id ? " primary" : " ghost")} onClick={() => setTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 12 }}>
-        {kpis.map((t) => (
-          <div key={t.label} className="card" style={{ padding: "14px 16px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--ink-3)", fontSize: 11.5, fontWeight: 600, marginBottom: 4 }}><Icon name={t.icon} size={14} style={{ color: t.c }} />{t.label}</div>
-            <div className="mono tnum" style={{ fontSize: 23, fontWeight: 700, color: t.c }}>{t.value}</div>
-            <div style={{ fontSize: 11, color: "var(--ink-4)" }}>{t.sub}</div>
-          </div>
-        ))}
-      </div>
+      {/* ══ SALES TAB ══ */}
+      {tab === "sales" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px,1fr))", gap: 16, alignItems: "start" }}>
-        <RCard title="Sales by category" icon="chart" action={exportBtn("Sales by category", data.catRows.map(r=>[r.k, r.v]), ["Category","Revenue"])}>
-          <BarList rows={data.catRows} color="var(--accent)" />
-        </RCard>
-
-        <RCard title="Sales by location" icon="warehouse" action={exportBtn("Sales by location", data.whRows.map(r=>[r.k, r.v]), ["Location","Revenue"])}>
-          <BarList rows={data.whRows} color="var(--ok)" />
-        </RCard>
-
-        <RCard title="Top products" icon="box" sub="by revenue" action={exportBtn("Top products", data.topProducts.map(({p,v})=>[p.sku, p.name, v]), ["SKU","Product","Revenue"])}>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {data.topProducts.map(({ p, v }, i) => (
-              <div key={p.sku} style={{ display: "flex", alignItems: "center", gap: 11, padding: "8px 0", borderBottom: i < data.topProducts.length - 1 ? "1px solid var(--line-soft)" : "none" }}>
-                <span className="mono tnum" style={{ width: 18, color: "var(--ink-4)", fontSize: 12 }}>{i + 1}</span>
-                <Thumb cat={p.category} size={32} photo={p.photo} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
-                  <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{p.sku}</div>
+          {/* 6 KPI tiles */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(155px,1fr))", gap: 12 }}>
+            {[
+              { label: "Sales revenue",   value: money(data.salesRevenue),   sub: "at selling price",      c: "var(--ok)",         icon: "chart"   },
+              { label: "Gross profit",    value: money(data.grossProfit),    sub: data.grossMargin + "% blended margin", c: "var(--accent-text)", icon: "tag" },
+              { label: "Units sold",      value: num(data.unitsSold),        sub: "across all locations",  c: "var(--ink)",        icon: "box"     },
+              { label: "Transactions",    value: num(data.txCount),          sub: "unique sale refs",      c: "var(--ink)",        icon: "receipt" },
+              { label: "Avg. order value",value: money(data.avgOrderValue),  sub: "per transaction",       c: "var(--ink-2)",      icon: "gauge"   },
+              { label: "Daily average",   value: money(data.avgDaily),       sub: "revenue per day",       c: "var(--ink-2)",      icon: "calendar"},
+            ].map((t) => (
+              <div key={t.label} className="card" style={{ padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--ink-3)", fontSize: 11.5, fontWeight: 600, marginBottom: 4 }}>
+                  <Icon name={t.icon} size={14} style={{ color: t.c }} />{t.label}
                 </div>
-                <span className="mono tnum" style={{ fontSize: 13, fontWeight: 700 }}>{money(v)}</span>
+                <div className="mono tnum" style={{ fontSize: 22, fontWeight: 700, color: t.c }}>{t.value}</div>
+                <div style={{ fontSize: 11, color: "var(--ink-4)" }}>{t.sub}</div>
               </div>
             ))}
           </div>
-        </RCard>
 
-        <RCard title="Inventory valuation" icon="tag" action={exportBtn("Inventory valuation", data.valRows.map(r=>[r.k, r.v]), ["Category","Cost Value"])}>
-          <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-            {[["At cost", money(data.costVal)], ["At retail", money(data.retailVal)], ["Margin", grossMargin + "%"]].map(([l, v]) => (
-              <div key={l} style={{ flex: 1, padding: "9px 11px", borderRadius: 7, background: "var(--panel-2)" }}>
-                <div style={{ fontSize: 10.5, color: "var(--ink-3)" }}>{l}</div>
-                <div className="mono tnum" style={{ fontSize: 15, fontWeight: 700 }}>{v}</div>
+          {/* Revenue trend bar chart */}
+          <RCard title="Revenue trend" icon="chart" sub={"last " + data.trendN + " days — hover bars for exact value"} span>
+            <div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: "88px" }}>
+                {data.trend.map((d, i) => (
+                  <div key={i} title={money(d.v)} style={{
+                    flex: 1, borderRadius: "3px 3px 0 0", cursor: "default",
+                    background: d.today ? "var(--accent)" : "var(--accent-soft)",
+                    border: "1px solid var(--accent-line)",
+                    minHeight: "3px",
+                    height: Math.max(3, Math.round(d.v / data.maxTrend * 84)) + "px",
+                    transition: "height .4s",
+                  }} />
+                ))}
               </div>
-            ))}
-          </div>
-          <BarList rows={data.valRows} color="var(--accent)" />
-        </RCard>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 10, color: "var(--ink-4)" }}>
+                <span>{data.trendN}d ago</span>
+                <span style={{ color: "var(--accent-text)", fontWeight: 600 }}>Today</span>
+              </div>
+            </div>
+          </RCard>
 
-        <RCard title="Stock health" icon="gauge">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {[["ok", "Healthy"], ["watch", "Watch"], ["low", "Low"], ["out", "Out of stock"]].map(([k, label]) => (
-              <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px", borderRadius: 8, background: "var(--panel-2)" }}>
-                <span className={"dot " + k} style={{ width: 10, height: 10 }} />
-                <div style={{ flex: 1 }}>
-                  <div className="mono tnum" style={{ fontSize: 20, fontWeight: 700, color: "var(--" + k + ")" }}>{data.health[k]}</div>
-                  <div style={{ fontSize: 11, color: "var(--ink-3)" }}>{label}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px,1fr))", gap: 16, alignItems: "start" }}>
+
+            {/* Category performance table with margin */}
+            <RCard title="Sales by category" icon="chart"
+              action={exportBtn("Category sales", data.catRows.map(r => [r.cat, r.units, r.rev, r.gp, r.margin + "%"]), ["Category","Units","Revenue","Gross Profit","Margin"])}>
+              <div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 52px 84px 84px 44px", gap: 6, padding: "3px 0 8px", fontSize: 10, color: "var(--ink-4)", fontWeight: 600, borderBottom: "1px solid var(--line-soft)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+                  <span>Category</span>
+                  <span className="mono" style={{ textAlign: "right" }}>Units</span>
+                  <span className="mono" style={{ textAlign: "right" }}>Revenue</span>
+                  <span className="mono" style={{ textAlign: "right" }}>Gross P.</span>
+                  <span className="mono" style={{ textAlign: "right" }}>Margin</span>
                 </div>
+                {data.catRows.map((r, i) => (
+                  <div key={r.cat} style={{ display: "grid", gridTemplateColumns: "1fr 52px 84px 84px 44px", gap: 6, padding: "8px 0", borderBottom: i < data.catRows.length - 1 ? "1px solid var(--line-soft)" : "none", alignItems: "center" }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 500 }}>{r.cat}</span>
+                    <span className="mono tnum" style={{ textAlign: "right", fontSize: 12, color: "var(--ink-2)" }}>{num(r.units)}</span>
+                    <span className="mono tnum" style={{ textAlign: "right", fontSize: 12, fontWeight: 700 }}>{money(r.rev)}</span>
+                    <span className="mono tnum" style={{ textAlign: "right", fontSize: 12, color: "var(--ok)" }}>{money(r.gp)}</span>
+                    <span style={{ textAlign: "right" }}><MarginPill pct={r.margin} /></span>
+                  </div>
+                ))}
+                {data.catRows.length === 0 && <div style={{ padding: "14px 0", color: "var(--ink-3)", fontSize: 12.5 }}>No sales in this period.</div>}
               </div>
-            ))}
-          </div>
-        </RCard>
+            </RCard>
 
-        <RCard title="Supplier spend" icon="truck" sub="received at cost" action={exportBtn("Supplier spend", data.supplierSpend.map(r=>[r.k, r.v]), ["Supplier","Amount"])}>
-          <BarList rows={data.supplierSpend} color="var(--watch)" />
-        </RCard>
-      </div>
+            {/* Top products by revenue */}
+            <RCard title="Top products by revenue" icon="box"
+              action={exportBtn("Top products by revenue", data.topProducts.map(({ p, rev, units }) => [p.sku, p.name, units, rev]), ["SKU","Product","Units","Revenue"])}>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {data.topProducts.map(({ p, rev, units }, i) => (
+                  <div key={p.sku} style={{ display: "flex", alignItems: "center", gap: 11, padding: "8px 0", borderBottom: i < data.topProducts.length - 1 ? "1px solid var(--line-soft)" : "none" }}>
+                    <span className="mono tnum" style={{ width: 18, color: "var(--ink-4)", fontSize: 12 }}>{i + 1}</span>
+                    <Thumb cat={p.category} size={30} photo={p.photo} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                      <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{p.sku} · {num(units)} units</div>
+                    </div>
+                    <span className="mono tnum" style={{ fontSize: 13, fontWeight: 700 }}>{money(rev)}</span>
+                  </div>
+                ))}
+                {data.topProducts.length === 0 && <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>No sales recorded.</div>}
+              </div>
+            </RCard>
+
+            {/* Top products by units sold */}
+            <RCard title="Top products by units sold" icon="box"
+              action={exportBtn("Top by units", data.topByUnits.map(({ p, rev, units }) => [p.sku, p.name, units, rev]), ["SKU","Product","Units","Revenue"])}>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {data.topByUnits.map(({ p, rev, units }, i) => (
+                  <div key={p.sku} style={{ display: "flex", alignItems: "center", gap: 11, padding: "8px 0", borderBottom: i < data.topByUnits.length - 1 ? "1px solid var(--line-soft)" : "none" }}>
+                    <span className="mono tnum" style={{ width: 18, color: "var(--ink-4)", fontSize: 12 }}>{i + 1}</span>
+                    <Thumb cat={p.category} size={30} photo={p.photo} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                      <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{p.sku}</div>
+                    </div>
+                    <span className="mono tnum" style={{ fontSize: 13, fontWeight: 700, color: "var(--accent-text)" }}>{num(units)}u</span>
+                  </div>
+                ))}
+                {data.topByUnits.length === 0 && <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>No sales recorded.</div>}
+              </div>
+            </RCard>
+
+            {/* Revenue by location */}
+            <RCard title="Revenue by location" icon="warehouse" action={exportBtn("Revenue by location", data.whRows.map(r => [r.k, r.v]), ["Location","Revenue"])}>
+              <BarList rows={data.whRows} color="var(--ok)" />
+            </RCard>
+
+          </div>
+        </div>
+      )}
+
+      {/* ══ INVENTORY TAB ══ */}
+      {tab === "inventory" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px,1fr))", gap: 16, alignItems: "start" }}>
+
+          <RCard title="Inventory valuation" icon="tag" action={exportBtn("Inventory valuation", data.valRows.map(r => [r.k, r.v]), ["Category","Cost Value"])}>
+            <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+              {[["At cost", money(data.costVal)], ["At retail", money(data.retailVal)], ["Margin", data.inventoryMargin + "%"]].map(([l, v]) => (
+                <div key={l} style={{ flex: 1, padding: "9px 11px", borderRadius: 7, background: "var(--panel-2)" }}>
+                  <div style={{ fontSize: 10.5, color: "var(--ink-3)" }}>{l}</div>
+                  <div className="mono tnum" style={{ fontSize: 15, fontWeight: 700 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <BarList rows={data.valRows} color="var(--accent)" />
+          </RCard>
+
+          <RCard title="Stock health" icon="gauge">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[["ok", "Healthy"], ["watch", "Watch"], ["low", "Low"], ["out", "Out of stock"]].map(([k, label]) => (
+                <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px", borderRadius: 8, background: "var(--panel-2)" }}>
+                  <span className={"dot " + k} style={{ width: 10, height: 10 }} />
+                  <div style={{ flex: 1 }}>
+                    <div className="mono tnum" style={{ fontSize: 20, fontWeight: 700, color: "var(--" + k + ")" }}>{data.health[k]}</div>
+                    <div style={{ fontSize: 11, color: "var(--ink-3)" }}>{label}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </RCard>
+        </div>
+      )}
+
+      {/* ══ PURCHASING TAB ══ */}
+      {tab === "purchasing" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px,1fr))", gap: 16, alignItems: "start" }}>
+
+          <RCard title="Supplier spend" icon="truck" sub="received at cost"
+            action={exportBtn("Supplier spend", data.supplierSpend.map(r => [r.k, r.v]), ["Supplier","Amount"])}>
+            <BarList rows={data.supplierSpend} color="var(--watch)" />
+          </RCard>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className="card" style={{ padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--ink-3)", fontSize: 11.5, fontWeight: 600, marginBottom: 4 }}>
+                <Icon name="truck" size={14} style={{ color: "var(--watch)" }} />Open PO commitment
+              </div>
+              <div className="mono tnum" style={{ fontSize: 24, fontWeight: 700, color: "var(--watch)" }}>{money(data.openCommit)}</div>
+              <div style={{ fontSize: 11, color: "var(--ink-4)" }}>inbound inventory at cost</div>
+            </div>
+            <div className="card" style={{ padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--ink-3)", fontSize: 11.5, fontWeight: 600, marginBottom: 4 }}>
+                <Icon name="gauge" size={14} style={{ color: "var(--accent-text)" }} />Accounts receivable
+              </div>
+              <div className="mono tnum" style={{ fontSize: 24, fontWeight: 700, color: "var(--accent-text)" }}>{money(data.ar)}</div>
+              <div style={{ fontSize: 11, color: "var(--ink-4)" }}>outstanding customer credit balances</div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -4825,10 +4969,10 @@ const Row = ({ cells, head, bold, w }) => (
 function ReceiptDoc({ data }) {
   return (
     <div>
-      <DocHead title="Sales Receipt" meta={data.saleId + " · " + TODAY} badge={"Register: Ozamis City"} />
+      <DocHead title="Sales Receipt" meta={data.saleId + " · " + TODAY} badge={"Register: " + ((DATA.WAREHOUSES.find(w => w.id === data.wh) || {}).name || data.wh || "POS")} />
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 14 }}>
         <div><div style={{ color: PD.muted, fontSize: 10.5 }}>BILL TO</div><div style={{ fontWeight: 600 }}>{data.customer.name}</div>{data.customer.phone && data.customer.phone !== "—" && <div style={{ color: PD.muted }}>{data.customer.phone}</div>}</div>
-        <div style={{ textAlign: "right" }}><div style={{ color: PD.muted, fontSize: 10.5 }}>CASHIER</div><div style={{ fontWeight: 600 }}>Dana Reyes</div></div>
+        <div style={{ textAlign: "right" }}><div style={{ color: PD.muted, fontSize: 10.5 }}>CASHIER</div><div style={{ fontWeight: 600 }}>{data.cashier || "Cashier"}</div></div>
       </div>
       <Row head cells={["Item", "Qty", "Price", "Amount"]} w={[5, 1, 2, 2]} />
       {data.cart.map((l) => <Row key={l.sku} w={[5, 1, 2, 2]} cells={[l.name + (l.install ? " + install" : ""), l.qty, pdMoney(l.price), pdMoney(l.price * l.qty + (l.install ? 79 : 0))]} />)}
@@ -4981,36 +5125,207 @@ Object.assign(window, { PrintPreview });
 
 <script type="text/babel">
 /* dashboard.jsx — overview landing screen. Exports: DashboardScreen */
-const { useMemo: useMemoDash } = React;
+const { useMemo: useMemoDash, useState: useStateDash } = React;
 
 function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
+  const [salesPeriod, setSalesPeriod] = useStateDash("mtd");
+
   const alerts = useMemoDash(() => DATA.PRODUCTS
     .map((p) => ({ ...p, _status: statusFromTotal(p.total, p.reorder * 2) }))
     .filter((p) => p._status === "out" || p._status === "low")
     .sort((a, b) => (a._status === "out" ? 0 : 1) - (b._status === "out" ? 0 : 1) || a.total - b.total)
     .slice(0, 6), [rev]);
+
   const recent = useMemoDash(() => DATA.MOVEMENTS.slice(0, 7), [rev]);
   const inbound = pos.filter((po) => po.status === "Open" || po.status === "Partial").slice(0, 4);
   const sugCount = useMemoDash(() => suggestReorders().length, [rev]);
+
+  /* ── Sales analytics ── */
+  const salesData = useMemoDash(() => {
+    const maxDays = { today: 0, wtd: 6, mtd: 29, qtd: 89 }[salesPeriod] ?? 29;
+    let totalRev = 0, totalCost = 0, totalUnits = 0;
+    const dailyRev = {}, prodMap = {}, whRevMap = {}, catRevMap = {};
+    DATA.MOVEMENTS.filter(m => m.type === "Sale" && Math.floor(m.days) <= maxDays).forEach(m => {
+      const p = DATA.pid(m.sku); if (!p) return;
+      const units = Math.abs(m.qty), rev = units * p.price, cost = units * p.cost;
+      totalRev += rev; totalCost += cost; totalUnits += units;
+      const d = Math.floor(m.days);
+      dailyRev[d] = (dailyRev[d] || 0) + rev;
+      if (!prodMap[p.sku]) prodMap[p.sku] = { name: p.name, sku: p.sku, rev: 0, units: 0, photo: p.photo, category: p.category };
+      prodMap[p.sku].rev += rev; prodMap[p.sku].units += units;
+      const wn = (DATA.WAREHOUSES.find(w => w.id === m.wh) || {}).short || m.wh;
+      whRevMap[wn] = (whRevMap[wn] || 0) + rev;
+      catRevMap[p.category] = catRevMap[p.category] || { rev: 0, cost: 0 };
+      catRevMap[p.category].rev += rev; catRevMap[p.category].cost += cost;
+    });
+    /* always compute today + week for quick callouts */
+    let todayRev = 0, weekRev = 0;
+    DATA.MOVEMENTS.filter(m => m.type === "Sale").forEach(m => {
+      const p = DATA.pid(m.sku); if (!p) return;
+      const r = Math.abs(m.qty) * p.price;
+      if (Math.floor(m.days) === 0) todayRev += r;
+      if (Math.floor(m.days) <= 6) weekRev += r;
+    });
+    const trendN = Math.min(maxDays + 1, 14);
+    const trend = Array.from({ length: trendN }, (_, i) => ({ day: trendN - 1 - i, v: dailyRev[trendN - 1 - i] || 0, today: i === trendN - 1 }));
+    const topProds = Object.values(prodMap).sort((a, b) => b.rev - a.rev).slice(0, 5);
+    const whRows = Object.entries(whRevMap).map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v);
+    const catRows = Object.entries(catRevMap).map(([cat, d]) => ({ cat, rev: d.rev, cost: d.cost, margin: d.rev > 0 ? Math.round((d.rev - d.cost) / d.rev * 100) : 0 })).sort((a, b) => b.rev - a.rev).slice(0, 5);
+    const gp = totalRev - totalCost;
+    const margin = totalRev > 0 ? Math.round(gp / totalRev * 100) : 0;
+    const maxTrend = Math.max(...trend.map(t => t.v), 1);
+    return { totalRev, totalUnits, gp, margin, todayRev, weekRev, trend, maxTrend, trendN, topProds, whRows, catRows };
+  }, [rev, salesPeriod]);
+
+  /* ── Per-location stats ── */
   const byLoc = useMemoDash(() => DATA.WAREHOUSES.map((w) => {
-    let units = 0, value = 0, skus = 0, alerts = 0, ok = 0, sold = 0;
+    let units = 0, value = 0, skus = 0, walerts = 0, ok = 0, sold = 0, soldRev = 0;
     DATA.PRODUCTS.forEach((p) => {
       const q = p.stock[w.id] || 0;
       units += q; value += q * p.cost;
       if (q > 0) skus++;
       const st = statusFromTotal(q, p.reorder);
-      if (st === "out" || st === "low") alerts++;
+      if (st === "out" || st === "low") walerts++;
       if (st === "ok") ok++;
     });
-    DATA.MOVEMENTS.forEach((m) => { if (m.wh === w.id && m.type === "Sale") sold += Math.abs(m.qty); });
-    return { w, units, value, skus, alerts, sold, healthPct: Math.round(ok / DATA.PRODUCTS.length * 100) };
+    DATA.MOVEMENTS.forEach((m) => {
+      if (m.wh === w.id && m.type === "Sale") {
+        sold += Math.abs(m.qty);
+        const p = DATA.pid(m.sku); if (p) soldRev += Math.abs(m.qty) * p.price;
+      }
+    });
+    return { w, units, value, skus, walerts, sold, soldRev, healthPct: Math.round(ok / DATA.PRODUCTS.length * 100) };
   }), [rev]);
+
+  const PERIOD_OPTS = [
+    { value: "today", label: "Today" },
+    { value: "wtd",   label: "This Week" },
+    { value: "mtd",   label: "This Month" },
+    { value: "qtd",   label: "Quarter" },
+  ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18, animation: "fadeIn .2s ease both" }}>
       <KpiStrip rev={rev} />
 
-      {/* AI nudge banner */}
+      {/* ── SALES PERFORMANCE CARD ── */}
+      <div className="card" style={{ overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "13px 16px", borderBottom: "1px solid var(--line-soft)", flexWrap: "wrap" }}>
+          <Icon name="chart" size={15} style={{ color: "var(--accent-text)" }} />
+          <span style={{ fontWeight: 700, fontSize: 13.5 }}>Sales performance</span>
+          <span style={{ fontSize: 12, color: "var(--ink-3)" }}>from recorded movements</span>
+          <span style={{ marginLeft: "auto" }}>
+            <Segmented value={salesPeriod} onChange={setSalesPeriod} options={PERIOD_OPTS} />
+          </span>
+        </div>
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* KPI mini-tiles */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(128px,1fr))", gap: 9 }}>
+            {[
+              { label: "Revenue",     value: money(salesData.totalRev),   sub: "at selling price",  c: "var(--ok)" },
+              { label: "Gross profit",value: money(salesData.gp),         sub: salesData.margin + "% margin", c: "var(--accent-text)" },
+              { label: "Units sold",  value: num(salesData.totalUnits),   sub: "all locations",     c: "var(--ink)" },
+              { label: "Today",       value: money(salesData.todayRev),   sub: "last recorded",     c: "var(--ink-2)" },
+              { label: "This week",   value: money(salesData.weekRev),    sub: "rolling 7 days",    c: "var(--ink-2)" },
+            ].map(t => (
+              <div key={t.label} style={{ padding: "11px 13px", borderRadius: 8, background: "var(--panel-2)", border: "1px solid var(--line-soft)" }}>
+                <div style={{ fontSize: 10.5, color: "var(--ink-3)", fontWeight: 600, marginBottom: 4 }}>{t.label}</div>
+                <div className="mono tnum" style={{ fontSize: 17, fontWeight: 700, color: t.c }}>{t.value}</div>
+                <div style={{ fontSize: 10, color: "var(--ink-4)" }}>{t.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Trend chart + Top products */}
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(0,1fr)", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-2)", marginBottom: 8 }}>
+                Revenue trend · last {salesData.trendN} days
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: "68px" }}>
+                {salesData.trend.map((d, i) => (
+                  <div key={i} title={money(d.v)} style={{
+                    flex: 1, borderRadius: "3px 3px 0 0", cursor: "default",
+                    background: d.today ? "var(--accent)" : "var(--accent-soft)",
+                    border: "1px solid var(--accent-line)",
+                    minHeight: "3px",
+                    height: Math.max(3, Math.round(d.v / salesData.maxTrend * 64)) + "px",
+                    transition: "height .4s",
+                  }} />
+                ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 9.5, color: "var(--ink-4)" }}>
+                <span>{salesData.trendN}d ago</span>
+                <span style={{ color: "var(--accent-text)", fontWeight: 600 }}>Today</span>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-2)", marginBottom: 8 }}>Top products by revenue</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {salesData.topProds.map((p, i) => (
+                  <div key={p.sku} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span className="mono" style={{ width: 14, color: "var(--ink-4)", fontSize: 11 }}>{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                      <div style={{ fontSize: 10, color: "var(--ink-4)" }} className="mono">{num(p.units)} units</div>
+                    </div>
+                    <span className="mono tnum" style={{ fontSize: 11, fontWeight: 700 }}>{money(p.rev)}</span>
+                  </div>
+                ))}
+                {salesData.topProds.length === 0 && <div style={{ fontSize: 12, color: "var(--ink-3)" }}>No sales recorded yet.</div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Revenue by warehouse + Category breakdown */}
+          {(salesData.whRows.length > 0 || salesData.catRows.length > 0) && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, paddingTop: 12, borderTop: "1px solid var(--line-soft)" }}>
+              {salesData.whRows.length > 0 && (() => {
+                const maxWh = Math.max(...salesData.whRows.map(r => r.v), 1);
+                return (
+                  <div>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-2)", marginBottom: 8 }}>Revenue by warehouse</div>
+                    {salesData.whRows.map(r => (
+                      <div key={r.k} style={{ marginBottom: 8 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 3 }}>
+                          <span style={{ color: "var(--ink-2)" }}>{r.k}</span>
+                          <span className="mono" style={{ color: "var(--ink-3)" }}>{money(r.v)}</span>
+                        </div>
+                        <div style={{ height: 6, background: "var(--bg)", borderRadius: 99, overflow: "hidden", border: "1px solid var(--line-soft)" }}>
+                          <div style={{ height: "100%", width: (r.v / maxWh * 100) + "%", background: "var(--ok)", borderRadius: 99, transition: "width .5s" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              {salesData.catRows.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-2)", marginBottom: 8 }}>Top categories</div>
+                  {salesData.catRows.map((r, i) => (
+                    <div key={r.cat} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: i < salesData.catRows.length - 1 ? "1px solid var(--line-soft)" : "none" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 11.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.cat}</div>
+                      </div>
+                      <span className="mono tnum" style={{ fontSize: 11, color: "var(--ink-2)" }}>{money(r.rev)}</span>
+                      <span className="mono tnum" style={{ fontSize: 10, fontWeight: 700, color: r.margin >= 30 ? "var(--ok)" : r.margin >= 15 ? "var(--watch)" : "var(--low)", minWidth: 32, textAlign: "right" }}>{r.margin}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ paddingTop: 4 }}>
+            <button className="btn ghost sm" style={{ color: "var(--accent-text)" }} onClick={() => onGoto("reports")}>
+              View full reports<Icon name="chevR" size={12} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── AI nudge banner ── */}
       <div className="card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, background: "linear-gradient(100deg, var(--accent-soft), transparent 70%)", borderColor: "var(--accent-line)", flexWrap: "wrap" }}>
         <Icon name="sparkles" size={20} style={{ color: "var(--accent-text)", flex: "none" }} />
         <div style={{ flex: 1, minWidth: 200 }}>
@@ -5020,7 +5335,7 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
         <button className="btn primary" onClick={() => onGoto("purchasing")}><Icon name="truck" size={15} />Review suggested POs</button>
       </div>
 
-      {/* per-location statistics */}
+      {/* ── By location ── */}
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
           <Icon name="warehouse" size={15} style={{ color: "var(--ink-2)" }} />
@@ -5028,8 +5343,10 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
           <span style={{ fontSize: 12, color: "var(--ink-3)" }}>{byLoc.length} sites</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(246px, 1fr))", gap: 12 }}>
-          {byLoc.map(({ w, units, value, skus, alerts, sold, healthPct }) => (
-            <div key={w.id} className="card" onClick={() => onGoto("inventory")} style={{ padding: 15, display: "flex", flexDirection: "column", gap: 12, cursor: "pointer" }} onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--line-strong)"} onMouseLeave={(e) => e.currentTarget.style.borderColor = ""}>
+          {byLoc.map(({ w, units, value, skus, walerts, sold, soldRev, healthPct }) => (
+            <div key={w.id} className="card" onClick={() => onGoto("inventory")} style={{ padding: 15, display: "flex", flexDirection: "column", gap: 12, cursor: "pointer" }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--line-strong)"}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = ""}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--panel-2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
                   <Icon name="warehouse" size={16} style={{ color: "var(--accent-text)" }} />
@@ -5038,15 +5355,15 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
                   <div style={{ fontSize: 13.5, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{w.short}</div>
                   <div style={{ fontSize: 10.5, color: "var(--ink-3)" }}>{w.type}</div>
                 </div>
-                {alerts > 0 ? <span className="badge low" style={{ fontSize: 10 }}>{alerts} alert{alerts !== 1 ? "s" : ""}</span> : <span className="badge ok" style={{ fontSize: 10 }}>Healthy</span>}
+                {walerts > 0 ? <span className="badge low" style={{ fontSize: 10 }}>{walerts} alert{walerts !== 1 ? "s" : ""}</span> : <span className="badge ok" style={{ fontSize: 10 }}>Healthy</span>}
               </div>
               <div>
                 <div style={{ fontSize: 10.5, color: "var(--ink-3)" }}>Inventory value</div>
                 <div className="mono tnum" style={{ fontSize: 21, fontWeight: 700, letterSpacing: "-0.01em" }}>{money(value)}</div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, paddingTop: 11, borderTop: "1px solid var(--line-soft)" }}>
-                {[["On hand", num(units) + "u"], ["SKUs", num(skus)], ["Sold", num(sold) + "u"]].map(([l, v]) => (
-                  <div key={l}><div style={{ fontSize: 10, color: "var(--ink-4)" }}>{l}</div><div className="mono tnum" style={{ fontSize: 14, fontWeight: 600 }}>{v}</div></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6, paddingTop: 11, borderTop: "1px solid var(--line-soft)" }}>
+                {[["On hand", num(units) + "u"], ["SKUs", num(skus)], ["Sold", num(sold) + "u"], ["Sales", money(soldRev)]].map(([l, v]) => (
+                  <div key={l}><div style={{ fontSize: 10, color: "var(--ink-4)" }}>{l}</div><div className="mono tnum" style={{ fontSize: 12, fontWeight: 600 }}>{v}</div></div>
                 ))}
               </div>
               <div>
@@ -5060,13 +5377,14 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
         </div>
       </div>
 
+      {/* ── Alerts / Inbound / Recent ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))", gap: 16, alignItems: "start" }}>
-        {/* alerts */}
         <div className="card" style={{ overflow: "hidden" }}>
           <PanelHead icon="alert" title="Needs attention" color="var(--low)" action="View inventory" onAction={() => onGoto("inventory")} />
           {alerts.map((p) => (
             <div key={p.sku} onClick={() => onOpenProduct(p)} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 16px", borderTop: "1px solid var(--line-soft)", cursor: "pointer" }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "var(--panel-2)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--panel-2)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
               <Thumb cat={p.category} size={34} photo={p.photo} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
@@ -5078,7 +5396,6 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
           ))}
         </div>
 
-        {/* inbound */}
         <div className="card" style={{ overflow: "hidden" }}>
           <PanelHead icon="truck" title="Inbound shipments" color="var(--accent-text)" action="Receiving" onAction={() => onGoto("receiving")} />
           {inbound.map((po) => {
@@ -5086,7 +5403,8 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
             const rem = po.lines.reduce((s, l) => s + (l.qty - l.recv), 0);
             return (
               <div key={po.id} onClick={() => onReceive(po)} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 16px", borderTop: "1px solid var(--line-soft)", cursor: "pointer" }}
-                onMouseEnter={(e) => e.currentTarget.style.background = "var(--panel-2)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                onMouseEnter={(e) => e.currentTarget.style.background = "var(--panel-2)"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--accent-text)" }}>{po.id}</span>
@@ -5104,7 +5422,6 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
           {inbound.length === 0 && <div style={{ padding: 18, color: "var(--ink-3)", fontSize: 12.5, borderTop: "1px solid var(--line-soft)" }}>No inbound shipments.</div>}
         </div>
 
-        {/* recent activity */}
         <div className="card" style={{ overflow: "hidden" }}>
           <PanelHead icon="refresh" title="Recent stock activity" color="var(--ink-2)" />
           {recent.map((m) => {
@@ -6155,6 +6472,142 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 
 const ACCENTS = { "#7b6cf0": 285, "#2f7ef5": 256, "#16a071": 162, "#e0683f": 47, "#d64b78": 4 };
 
+/* ── User registry ── */
+const AUTH_STORE_KEY = 'everose_auth_v1';
+const USERS = [
+  { id: "U-001", name: "Eric Thegreat", role: "Managing Director",    pin: "1234", wh: "all"          },
+  { id: "U-002", name: "Ana Dela Cruz",  role: "Cashier — Iligan",    pin: "1111", wh: "WH-ILIGAN"    },
+  { id: "U-003", name: "Ben Santos",     role: "Cashier — Ozamis",    pin: "2222", wh: "WH-OZAMIS"    },
+  { id: "U-004", name: "Carla Reyes",    role: "Cashier — Dumaguete", pin: "3333", wh: "WH-DUMAGUETE" },
+];
+
+/* ── Login screen ── */
+function LoginScreen({ onLogin }) {
+  const [selUser, setSelUser] = React.useState(null);
+  const [pin, setPin] = React.useState("");
+  const [err, setErr] = React.useState("");
+  const [shake, setShake] = React.useState(false);
+
+  function pickUser(u) { setSelUser(u); setPin(""); setErr(""); }
+
+  function pressKey(k) {
+    if (k === "⌫") { setPin(p => p.slice(0, -1)); setErr(""); return; }
+    if (pin.length >= 4) return;
+    const np = pin + k;
+    setPin(np);
+    if (np.length === 4) {
+      setTimeout(() => {
+        if (selUser && np === selUser.pin) {
+          onLogin(selUser);
+        } else {
+          setShake(true); setErr("Incorrect PIN — try again"); setPin("");
+          setTimeout(() => setShake(false), 500);
+        }
+      }, 160);
+    }
+  }
+
+  const whLabel = (u) => {
+    if (u.wh === "all") return "All branches";
+    const w = DATA.WAREHOUSES.find(w => w.id === u.wh);
+    return w ? w.name : u.wh;
+  };
+
+  return (
+    <div style={{
+      height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      gap: 28, background: "var(--bg)",
+      backgroundImage: "radial-gradient(ellipse 80% 60% at 50% 0%, oklch(0.66 0.17 285 / 0.12) 0%, transparent 65%)",
+    }}>
+      {/* Logo */}
+      <div style={{ textAlign: "center" }}>
+        <EveroseLogo size={52} />
+        <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: "-0.02em", marginTop: 10 }}>Everose ERP</div>
+        <div style={{ fontSize: 11, color: "var(--ink-3)", letterSpacing: ".06em", marginTop: 3 }}>MARKETING CORP. · SECURE ACCESS</div>
+      </div>
+
+      {!selUser ? (
+        /* ── User selector ── */
+        <div style={{ width: "min(480px, 94vw)" }}>
+          <div style={{ fontSize: 12.5, color: "var(--ink-3)", textAlign: "center", marginBottom: 16, fontWeight: 600, letterSpacing: ".03em" }}>SELECT YOUR ACCOUNT</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {USERS.map(u => (
+              <button key={u.id} onClick={() => pickUser(u)} style={{
+                display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
+                background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 12,
+                cursor: "pointer", textAlign: "left", transition: "border-color .15s, box-shadow .15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 2px var(--accent-soft)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--line)"; e.currentTarget.style.boxShadow = "none"; }}>
+                <Avatar name={u.name} size={42} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>{u.role}</div>
+                  <div style={{ fontSize: 10.5, marginTop: 3, color: u.wh === "all" ? "var(--ok)" : "var(--accent-text)", fontWeight: 600 }}>{whLabel(u)}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* ── PIN pad ── */
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, width: "min(300px,90vw)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => setSelUser(null)} title="Back" style={{
+              background: "none", border: "1px solid var(--line)", cursor: "pointer", color: "var(--ink-2)",
+              width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Icon name="chevL" size={15} />
+            </button>
+            <Avatar name={selUser.name} size={44} />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{selUser.name}</div>
+              <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{selUser.role}</div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 12.5, color: "var(--ink-3)", fontWeight: 600 }}>ENTER 4-DIGIT PIN</div>
+
+          {/* PIN dots */}
+          <div style={{ display: "flex", gap: 14, animation: shake ? "shake .45s ease" : "none" }}>
+            {[0,1,2,3].map(i => (
+              <div key={i} style={{
+                width: 15, height: 15, borderRadius: "50%",
+                background: i < pin.length ? "var(--accent)" : "var(--line)",
+                boxShadow: i < pin.length ? "0 0 8px var(--accent-soft)" : "none",
+                transition: "background .12s, box-shadow .12s",
+              }} />
+            ))}
+          </div>
+          {err && <div style={{ fontSize: 12, color: "var(--low)", fontWeight: 600 }}>{err}</div>}
+
+          {/* Numpad */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 9, width: "100%" }}>
+            {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) => (
+              k === "" ? <div key={"e" + i} /> : (
+                <button key={k} onClick={() => pressKey(k)} style={{
+                  height: 58, borderRadius: 10, border: "1px solid var(--line)",
+                  background: "var(--bg-2)", color: "var(--ink)",
+                  fontSize: k === "⌫" ? 20 : 22, fontWeight: 700,
+                  cursor: "pointer", transition: "background .1s, border-color .1s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "var(--panel-2)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-2)"; e.currentTarget.style.borderColor = "var(--line)"; }}>
+                  {k}
+                </button>
+              )
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ fontSize: 11, color: "var(--ink-4)", textAlign: "center" }}>
+        Powered by Nexarch Technology · Everose Marketing Corp. © 2026
+      </div>
+    </div>
+  );
+}
+
 const ROUTE_META = {
   dashboard: { title: "Operations dashboard", sub: "Live inventory & purchasing overview" },
   pos: { title: "Point of Sale", sub: "Cashier · Ozamis City register" },
@@ -6187,6 +6640,28 @@ function App() {
   const [toasts, pushToast] = useToasts();
   const vp = useViewport();
   const [mobileNav, setMobileNav] = useS(false);
+
+  // auth
+  const [currentUser, setCurrentUser] = useS(() => {
+    try { const s = localStorage.getItem(AUTH_STORE_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
+  const [activeBranch, setActiveBranch] = useS(() => {
+    try {
+      const s = localStorage.getItem(AUTH_STORE_KEY);
+      const u = s ? JSON.parse(s) : null;
+      return u ? (u.wh === "all" ? "WH-ILIGAN" : u.wh) : "WH-ILIGAN";
+    } catch { return "WH-ILIGAN"; }
+  });
+
+  function handleLogin(user) {
+    setCurrentUser(user);
+    setActiveBranch(user.wh === "all" ? "WH-ILIGAN" : user.wh);
+    try { localStorage.setItem(AUTH_STORE_KEY, JSON.stringify(user)); } catch {}
+  }
+  function handleLogout() {
+    setCurrentUser(null);
+    try { localStorage.removeItem(AUTH_STORE_KEY); } catch {}
+  }
 
   // drawers
   const [product, setProduct] = useS(null);
@@ -6352,27 +6827,37 @@ function App() {
   }, [pushToast, bump]);
 
   const collapsed = vp === "tablet";
-  const meta = ROUTE_META[route];
+  const activeBranchObj = DATA.WAREHOUSES.find(w => w.id === activeBranch) || DATA.WAREHOUSES[0];
+  const isDirector = currentUser && currentUser.wh === "all";
+
+  /* Dynamic POS sub-title */
+  const posMeta = { title: "Point of Sale", sub: "Cashier · " + activeBranchObj.name };
+  const meta = route === "pos" ? posMeta : (ROUTE_META[route] || ROUTE_META.dashboard);
+
+  /* Show login screen if not authenticated */
+  if (!currentUser) return <LoginScreen onLogin={handleLogin} />;
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       {/* sidebar (desktop/tablet) */}
       {vp !== "mobile" && (
-        <Sidebar route={route} setRoute={setRoute} collapsed={collapsed} alertCount={alertCount} />
+        <Sidebar route={route} setRoute={setRoute} collapsed={collapsed} alertCount={alertCount}
+          currentUser={currentUser} onLogout={handleLogout} />
       )}
       {/* mobile off-canvas nav */}
       {vp === "mobile" && mobileNav && (
         <div style={{ position: "fixed", inset: 0, zIndex: 300 }}>
           <div onClick={() => setMobileNav(false)} style={{ position: "absolute", inset: 0, background: "oklch(0 0 0 / 0.55)" }} />
           <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, animation: "slideIn .2s ease both" }}>
-            <Sidebar route={route} setRoute={setRoute} collapsed={false} alertCount={alertCount} mobileOpen setMobileOpen={setMobileNav} />
+            <Sidebar route={route} setRoute={setRoute} collapsed={false} alertCount={alertCount} mobileOpen setMobileOpen={setMobileNav}
+              currentUser={currentUser} onLogout={handleLogout} />
           </div>
         </div>
       )}
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         {/* topbar */}
-        <header style={{ height: 60, flex: "none", borderBottom: "1px solid var(--line-soft)", display: "flex", alignItems: "center", gap: 14, padding: "0 18px", background: "var(--bg)" }}>
+        <header style={{ height: 60, flex: "none", borderBottom: "1px solid var(--line-soft)", display: "flex", alignItems: "center", gap: 10, padding: "0 18px", background: "var(--bg)" }}>
           {vp === "mobile" && (
             <button className="btn icon ghost" onClick={() => setMobileNav(true)} aria-label="Menu"><Icon name="list" size={18} /></button>
           )}
@@ -6380,13 +6865,25 @@ function App() {
             <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>{meta.title}</div>
             {vp !== "mobile" && <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{meta.sub}</div>}
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Branch selector (Director = dropdown, Cashier = badge) */}
+            {isDirector ? (
+              <select value={activeBranch} onChange={e => setActiveBranch(e.target.value)}
+                style={{ height: 32, background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: "0 10px", fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)", cursor: "pointer" }}>
+                {DATA.WAREHOUSES.map(w => <option key={w.id} value={w.id}>{w.short}</option>)}
+              </select>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", background: "var(--accent-soft)", border: "1px solid var(--accent-line)", borderRadius: 7 }}>
+                <Icon name="warehouse" size={13} style={{ color: "var(--accent-text)" }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent-text)" }}>{activeBranchObj.short}</span>
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, color: "var(--ink-3)" }}>
               <span className="dot ok" style={{ width: 7, height: 7 }} />{vp !== "mobile" && "Synced · "}<span className="mono">live</span>
             </div>
             {vp !== "mobile" && <button className="btn sm" onClick={() => { setRoute("purchasing"); }}><Icon name="sparkles" size={14} style={{ color: "var(--accent-text)" }} />Reorder AI</button>}
             <button className="btn sm" onClick={() => setShowDataPanel(true)} title="Data & Storage"><Icon name="db" size={15} style={{ color: "var(--accent-text)" }} />{vp !== "mobile" && "Data"}</button>
-            {/* ── Bell notification button ── */}
+            {/* Bell */}
             <button onClick={() => setShowNotif(true)} title={"Notifications" + (unreadCount > 0 ? " · " + unreadCount + " unread" : "")}
               style={{ position: "relative", background: "none", border: "none", padding: "6px 8px", cursor: "pointer", borderRadius: "var(--r)", color: unreadCount > 0 ? "var(--accent-text)" : "var(--ink-2)", display: "flex", alignItems: "center" }}>
               <Icon name="bell" size={18} style={{ animation: unreadCount > 0 ? "notifPulse 2.4s ease infinite" : "none" }} />
@@ -6394,15 +6891,15 @@ function App() {
                 <span style={{
                   position: "absolute", top: 3, right: 3, minWidth: 16, height: 16,
                   background: unreadCount > 0 && notifs.some(n => n.severity === "out" && !readIds.has(n.id)) ? "var(--out)" : "var(--low)",
-                  color: "#fff", borderRadius: 10,
-                  fontSize: 10, fontWeight: 800,
+                  color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 800,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   padding: "0 3px", lineHeight: 1, pointerEvents: "none",
                 }}>{unreadCount > 9 ? "9+" : unreadCount}</span>
               )}
             </button>
-            <button onClick={() => pushToast("Signed in as Dana Reyes · Warehouse Manager", "accent")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }} title="Account">
-              <Avatar name="Dana Reyes" size={32} />
+            {/* User avatar */}
+            <button onClick={() => pushToast("Signed in as " + currentUser.name + " · " + currentUser.role, "accent")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }} title={currentUser.name + " · " + currentUser.role}>
+              <Avatar name={currentUser.name} size={32} />
             </button>
           </div>
         </header>
@@ -6412,7 +6909,7 @@ function App() {
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
             <div key={route}>
               {route === "dashboard" && <DashboardScreen rev={rev} pos={DATA.POS} onGoto={setRoute} onOpenProduct={setProduct} onReceive={setReceivePO} />}
-              {route === "pos" && <POSScreen onComplete={completeSale} toast={pushToast} onPrint={setPrintDoc} />}
+              {route === "pos" && <POSScreen onComplete={completeSale} toast={pushToast} onPrint={setPrintDoc} wh={activeBranch} cashierName={currentUser.name} />}
               {route === "inventory" && <InventoryScreen rev={rev} layout={layout} setLayout={setLayout} onOpenProduct={setProduct} onNewPO={() => setCreatePO({ open: true, initial: null })} onAddToPO={openAddToPO} onAddProduct={() => setProductForm({ product: null })} />}
               {route === "purchasing" && <PurchaseScreen rev={rev} pos={DATA.POS} onCreate={() => setCreatePO({ open: true, initial: null })} onReceive={setReceivePO} prefillFromSuggestion={prefillFromSuggestion} toast={pushToast} onPrint={setPrintDoc} />}
               {route === "receiving" && <ReceivingScreen pos={DATA.POS} onReceive={setReceivePO} onBatchReceive={setBatchPOs} />}
