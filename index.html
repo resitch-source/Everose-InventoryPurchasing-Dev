@@ -154,7 +154,9 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes slideIn { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes slideInR { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes pop { from { transform: scale(.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes notifPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
 .fade { animation: fadeIn .22s ease both; }
 
 </style>
@@ -205,6 +207,8 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
 
 <!-- plain data (no babel) -->
 <script>
@@ -382,6 +386,16 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
     { id: "finance", label: "3rd-party financing", icon: "sparkles", acct: "1010" },
   ];
 
+  let _cfc = 1;
+  const CREDIT_COMPANIES = [
+    { id: "CF-001", name: "Everose In-House Installment", type: "In-house", interestRate: 0, minAmount: 500, maxAmount: 200000, terms: [3, 6, 12, 18, 24], processingDays: 0, requirements: "Valid government ID, completed application form. Staff approval required.", contactPerson: "Finance Dept.", contactPhone: "(088) 555-0100", contactEmail: "finance@everose.com", notes: "Zero-interest for qualified account customers. Subject to credit evaluation.", active: true },
+    { id: "CF-002", name: "BDO Unibank — Home Appliance Loan", type: "Bank", interestRate: 1.25, minAmount: 5000, maxAmount: 500000, terms: [6, 12, 18, 24, 36], processingDays: 5, requirements: "2 valid IDs, Certificate of Employment (COE), last 3 months payslips, utility bill.", contactPerson: "BDO Loans Center", contactPhone: "(02) 8631-8000", contactEmail: "loans@bdo.com.ph", notes: "Pre-approved BDO cardholders get 0% for 3 months.", active: true },
+    { id: "CF-003", name: "BPI Family Savings — Personal Loan", type: "Bank", interestRate: 1.30, minAmount: 10000, maxAmount: 300000, terms: [12, 24, 36], processingDays: 7, requirements: "2 valid IDs, proof of income, bank statements (3 months), TIN.", contactPerson: "BPI Branches", contactPhone: "(02) 8889-1000", contactEmail: "customercare@bpi.com.ph", notes: "BPI account holders get preferential rates.", active: true },
+    { id: "CF-004", name: "Home Credit Philippines", type: "Financing", interestRate: 3.49, minAmount: 2000, maxAmount: 150000, terms: [3, 6, 9, 12, 18, 24], processingDays: 1, requirements: "1 valid government ID, selfie with ID. No payslip needed for amounts below ₱20k.", contactPerson: "Home Credit Agent", contactPhone: "1-800-10-463-6234", contactEmail: "customerservice@homecredit.ph", notes: "Fast approval. Available in-store with agent assistance.", active: true },
+    { id: "CF-005", name: "Landbank — Agricultural & Consumer Loan", type: "Government", interestRate: 0.83, minAmount: 10000, maxAmount: 1000000, terms: [12, 24, 36, 60], processingDays: 14, requirements: "Government-issued ID, proof of income or business, barangay clearance, filled-out loan application.", contactPerson: "Landbank Branch", contactPhone: "(02) 8405-7000", contactEmail: "customercare@landbank.com", notes: "Best rates for government employees and farmers. Longer processing time.", active: true },
+    { id: "CF-006", name: "Aeon Credit Service — Consumer Finance", type: "Financing", interestRate: 2.75, minAmount: 3000, maxAmount: 80000, terms: [6, 12, 18, 24], processingDays: 2, requirements: "1 valid ID, 1 proof of billing, employment certificate or DTI for self-employed.", contactPerson: "Aeon Partner", contactPhone: "(02) 8633-4499", contactEmail: "info@aeoncredit.com.ph", notes: "Available for employed and self-employed customers.", active: true },
+  ];
+
   // Chart of accounts. type drives normal balance side.
   const ACCOUNTS = [
     { code: "1000", name: "Cash on Hand", type: "Asset" },
@@ -465,12 +479,17 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
     return DEBIT_NORMAL[a.type] === 1 ? dr - cr : cr - dr;
   }
 
+  let _custSeq = Math.max(...CUSTOMERS.map(c => parseInt(c.id.replace('C-',''))||1001)) + 1;
+  let _cfSeq = Math.max(...CREDIT_COMPANIES.map(c => parseInt(c.id.replace('CF-',''))||1)) + 1;
+
   Object.assign(D, {
-    CUSTOMERS, TENDERS, ACCOUNTS, JOURNAL, DEBIT_NORMAL,
+    CUSTOMERS, TENDERS, ACCOUNTS, JOURNAL, DEBIT_NORMAL, CREDIT_COMPANIES,
     acctBalance, acctBalanceRaw,
     cust: (id) => CUSTOMERS.find((c) => c.id === id),
     acct: (code) => ACCOUNTS.find((a) => a.code === code),
     newJE: (days, memo, ref, kind, lines) => ({ id: "JE-" + Math.floor(Math.random() * 9000 + 6000), days, memo, ref, kind, lines }),
+    nextCustId: () => "C-" + (_custSeq++),
+    nextCfId: () => "CF-" + String(_cfSeq++).padStart(3, "0"),
   });
 })();
 
@@ -1138,8 +1157,25 @@ const PATHS = {
   tag: "M8 2 L14 2 L14 8 L8 14 L2 8 Z M11 5 v.01",
   refresh: "M13 7 a5 5 0 1 0-1 4 M13 3 L13 7 L9 7",
   receipt: "M3.5 2 L12.5 2 L12.5 14 L10.5 12.5 L8 14 L5.5 12.5 L3.5 14 Z M6 5.5 L10 5.5 M6 8 L10 8",
+  db: "M8 2 C4 2 2 3.5 2 5 L2 11 C2 12.5 4 14 8 14 C12 14 14 12.5 14 11 L14 5 C14 3.5 12 2 8 2 Z M2 5 C2 6.5 4 8 8 8 C12 8 14 6.5 14 5 M2 8 C2 9.5 4 11 8 11 C12 11 14 9.5 14 8",
   camera: "M1.5 5 L5 5 L6.5 2.5 L9.5 2.5 L11 5 L14.5 5 L14.5 13.5 L1.5 13.5 Z M8 10.5 a2.5 2.5 0 1 1 0-5 a2.5 2.5 0 0 1 0 5",
   barcode: "M2 3 L2 13 M4 3 L4 13 M6.5 3 L6.5 13 M8 3 L8 13 M9.5 3 L9.5 13 M11 3 L11 13 M13 3 L13 13",
+  edit: "M10.5 2.5 L13.5 5.5 L6 13 L2.5 13.5 L3 10 Z M9 4 L12 7",
+  trash: "M3 5 L13 5 M5 5 L5 13.5 L11 13.5 L11 5 M6 5 L6 3 L10 3 L10 5 M7 8 L7 11 M9 8 L9 11",
+  image: "M2 3 L14 3 L14 13 L2 13 Z M2 9.5 L5.5 6 L9 9.5 L11 7.5 L14 10.5 M10.5 6.5 a0.6 0.6 0 1 1 0-1.2 a0.6 0.6 0 0 1 0 1.2",
+  upload: "M8 12 L8 4 M4.5 7.5 L8 4 L11.5 7.5 M2.5 14 L13.5 14",
+  person: "M8 7.5 a3 3 0 1 1 0-6 a3 3 0 0 1 0 6 M2 14.5 a6 6 0 0 1 12 0",
+  people: "M6 7 a2.5 2.5 0 1 1 0-5 a2.5 2.5 0 0 1 0 5 M1.5 14 a4.5 4.5 0 0 1 9 0 M11 5.5 a2 2 0 1 1 0-4 a2 2 0 0 1 0 4 M11 8.5 c1.5 .2 2.8 1.3 3.2 2.8",
+  bank: "M2 6 L8 2 L14 6 L14 7 L2 7 Z M4 7 L4 12 M7 7 L7 12 M9 7 L9 12 M12 7 L12 12 M2 12 L14 12 M1.5 14 L14.5 14",
+  phone: "M5 2 L9 2 C9.5 2 10 2.5 10 3 L10 5 C10 5.5 9.5 6 9 6 L7.5 6 C7.5 8 8.5 10 10 10 L10 8.5 C10 8 10.5 7.5 11 7.5 L13 7.5 C13.5 7.5 14 8 14 8.5 L14 12.5 C14 13 13.5 13.5 13 13.5 C7 13.5 2.5 9 2.5 3 C2.5 2.5 3 2 3.5 2 Z",
+  mail: "M2 4 L14 4 L14 12 L2 12 Z M2 4 L8 9 L14 4",
+  home: "M2 8 L8 2.5 L14 8 M4 8 L4 14 L12 14 L12 8 M6.5 14 L6.5 10 L9.5 10 L9.5 14",
+  percent: "M4 4 a1 1 0 1 1 0-2 a1 1 0 0 1 0 2 M12 14 a1 1 0 1 1 0-2 a1 1 0 0 1 0 2 M3 13 L13 3",
+  calendar: "M2 4 L14 4 L14 14 L2 14 Z M2 7 L14 7 M5 2 L5 5 M11 2 L11 5 M5 10 L7 10 M5 11.5 L7 11.5",
+  bell: "M8 1.5 C5.5 1.5 3.5 3.8 3.5 6.5 L3.5 10.5 L1.5 12.5 L14.5 12.5 L12.5 10.5 L12.5 6.5 C12.5 3.8 10.5 1.5 8 1.5 M6.2 12.5 C6.2 13.6 7 14.5 8 14.5 C9 14.5 9.8 13.6 9.8 12.5",
+  bellOff: "M1.5 1.5 L14.5 14.5 M8 1.5 C5.5 1.5 3.5 3.8 3.5 6.5 L3.5 10.5 L1.5 12.5 L14.5 12.5 M12.5 8.5 L12.5 6.5 C12.5 3.8 10.5 1.5 8 1.5 M6.2 12.5 C6.2 13.6 7 14.5 8 14.5 C9 14.5 9.8 13.6 9.8 12.5",
+  send: "M14 2 L2 7 L7 9 L9 14 Z M7 9 L14 2",
+  warning: "M8 3 L1.5 14 L14.5 14 Z M8 7 L8 10.5 M8 12 L8 12.2",
 };
 function Icon({ name, size = 16, style, className }) {
   return (
@@ -1308,8 +1344,15 @@ function StockBar({ value, reorder, max }) {
 }
 
 /* ---------- product thumbnail placeholder ---------- */
-function Thumb({ cat, size = 44, sku }) {
+function Thumb({ cat, size = 44, photo }) {
   const tag = (cat || "").split(/\s/)[0].toLowerCase();
+  if (photo) {
+    return (
+      <div style={{ width: size, height: size, flex: "none", borderRadius: size > 44 ? 10 : 7, overflow: "hidden", border: "1px solid var(--line-soft)", background: "var(--bg-2)", flex: "none" }}>
+        <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      </div>
+    );
+  }
   return (
     <div className="ph" style={{ width: size, height: size, flex: "none", fontSize: size < 40 ? 8 : 9 }}>
       <span style={{ opacity: 0.8, lineHeight: 1.1 }}>{tag}<br />shot</span>
@@ -1356,6 +1399,7 @@ const NAV = [
   { id: "purchasing", label: "Purchase Orders", icon: "truck" },
   { id: "receiving", label: "Receiving", icon: "warehouse" },
   { id: "suppliers", label: "Suppliers", icon: "tag" },
+  { id: "customers", label: "Customers & Credit", icon: "people" },
   { id: "accounting", label: "Accounting", icon: "chart" },
   { id: "reports", label: "Reports", icon: "list" },
 ];
@@ -1430,7 +1474,11 @@ function Sidebar({ route, setRoute, collapsed, alertCount, mobileOpen, setMobile
             <a href="ERP-Manual.html" target="_blank" rel="noopener" style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 7, color: "var(--ink-2)", textDecoration: "none", fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}
               onMouseEnter={(e) => e.currentTarget.style.background = "var(--panel-2)"}
               onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-              <Icon name="receipt" size={14} style={{ color: "var(--accent-text)" }} />
+              <svg width={16} height={16} viewBox="0 0 48 48" style={{ display: "block", flex: "none" }} aria-hidden="true">
+                {[0,60,120,180,240,300].map((a,i) => <ellipse key={i} cx="24" cy="13.5" rx="6.2" ry="11.5" transform={"rotate("+a+" 24 24)"} fill="var(--accent)" opacity="0.55"/>)}
+                {[0,60,120,180,240,300].map((a,i) => <ellipse key={"x"+i} cx="24" cy="17.5" rx="3.8" ry="7.5" transform={"rotate("+(a+30)+" 24 24)"} fill="var(--accent-text)" opacity="0.9"/>)}
+                <circle cx="24" cy="24" r="3.6" fill="var(--ink)"/>
+              </svg>
               User &amp; Admin Manual
             </a>
             <div className="mono" style={{ fontSize: 9, letterSpacing: ".14em", color: "var(--ink-4)", fontWeight: 600, paddingLeft: 2 }}>POWERED BY</div>
@@ -1516,9 +1564,614 @@ function Segmented({ value, options, onChange, size }) {
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   Notification Management System
+   Sources: stock levels, PO overdue, AR balances
+──────────────────────────────────────────────────────────────────── */
+const NOTIF_READ_KEY = 'everose_notif_read';
+
+function buildNotifications() {
+  const notifs = [];
+
+  // 1. Out of stock
+  DATA.PRODUCTS.forEach(p => {
+    if (p.total === 0) {
+      notifs.push({
+        id: 'oos-' + p.sku,
+        type: 'stock',
+        severity: 'out',
+        icon: 'box',
+        title: 'Out of Stock',
+        body: p.name + ' (' + p.sku + ') — 0 units across all warehouses',
+        route: 'inventory',
+        ts: Date.now() - 1800000,
+      });
+    }
+  });
+
+  // 2. Low stock (at or below reorder point, not zero)
+  DATA.PRODUCTS.forEach(p => {
+    if (p.total > 0 && p.total <= p.reorder) {
+      notifs.push({
+        id: 'low-' + p.sku,
+        type: 'stock',
+        severity: 'warn',
+        icon: 'warning',
+        title: 'Low Stock Alert',
+        body: p.name + ' — ' + p.total + ' unit' + (p.total !== 1 ? 's' : '') + ' left · reorder point: ' + p.reorder,
+        route: 'inventory',
+        ts: Date.now() - 5400000,
+      });
+    }
+  });
+
+  // 3. Overdue POs (eta < 0, not received/draft)
+  DATA.POS.forEach(po => {
+    if ((po.status === 'Open' || po.status === 'Partial' || po.status === 'Ordered' || po.status === 'Pending') && po.eta < 0) {
+      const sup = (DATA.SUPPLIERS.find(s => s.id === po.supplierId) || {}).name || po.supplierId;
+      const days = Math.abs(po.eta);
+      notifs.push({
+        id: 'po-' + po.id,
+        type: 'po',
+        severity: days > 3 ? 'out' : 'warn',
+        icon: 'truck',
+        title: 'Overdue Purchase Order',
+        body: po.id + ' from ' + sup + ' — ' + days + ' day' + (days !== 1 ? 's' : '') + ' past ETA · Status: ' + po.status,
+        route: 'purchasing',
+        ts: Date.now() - 10800000,
+      });
+    }
+  });
+
+  // 4. Credit limit maxed (balance >= limit)
+  (DATA.CUSTOMERS || []).forEach(c => {
+    if (!c.creditLimit || c.creditLimit === 0 || c.type === 'Walk-in') return;
+    const pct = c.balance / c.creditLimit;
+    if (pct >= 1) {
+      notifs.push({
+        id: 'ar-max-' + c.id,
+        type: 'ar',
+        severity: 'out',
+        icon: 'gauge',
+        title: 'Credit Limit Reached',
+        body: c.name + ' — ₱' + c.balance.toLocaleString() + ' / ₱' + c.creditLimit.toLocaleString() + ' (100%)',
+        route: 'customers',
+        ts: Date.now() - 14400000,
+      });
+    } else if (pct >= 0.8) {
+      notifs.push({
+        id: 'ar-high-' + c.id,
+        type: 'ar',
+        severity: 'warn',
+        icon: 'gauge',
+        title: 'High AR Balance',
+        body: c.name + ' — ' + Math.round(pct * 100) + '% of ₱' + c.creditLimit.toLocaleString() + ' credit limit used',
+        route: 'customers',
+        ts: Date.now() - 18000000,
+      });
+    }
+  });
+
+  // Sort: out (critical) first, then warn
+  const order = { out: 0, warn: 1, info: 2 };
+  notifs.sort((a, b) => (order[a.severity] || 2) - (order[b.severity] || 2));
+  return notifs;
+}
+
+function useNotifications(rev) {
+  const [readIds, setReadIds] = React.useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(NOTIF_READ_KEY) || '[]')); }
+    catch(e) { return new Set(); }
+  });
+
+  const notifs = React.useMemo(() => buildNotifications(), [rev]);
+  const unreadCount = notifs.filter(n => !readIds.has(n.id)).length;
+
+  const markRead = React.useCallback((id) => {
+    setReadIds(prev => {
+      const next = new Set(prev); next.add(id);
+      localStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
+  const markAllRead = React.useCallback(() => {
+    setReadIds(() => {
+      const next = new Set(notifs.map(n => n.id));
+      localStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }, [notifs]);
+
+  const clearRead = React.useCallback(() => {
+    setReadIds(new Set());
+    localStorage.removeItem(NOTIF_READ_KEY);
+  }, []);
+
+  return { notifs, unreadCount, readIds, markRead, markAllRead, clearRead };
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MULTI-CHANNEL NOTIFICATION SYSTEM
+   Channels: Email · SMS · WhatsApp · Viber · Messenger
+════════════════════════════════════════════════════════════════════ */
+const NOTIF_SEVER_COLOR = { out: 'var(--out)', warn: 'var(--low)', info: 'var(--ok)' };
+const NOTIF_SEVER_BG    = { out: 'oklch(0.40 0.14 20 / 0.12)', warn: 'oklch(0.55 0.16 55 / 0.12)', info: 'oklch(0.40 0.14 145 / 0.08)' };
+const NOTIF_TYPE_LABEL  = { stock: 'Inventory', po: 'Purchasing', ar: 'Accounts Receivable', system: 'System' };
+const NOTIF_CHANNELS_KEY = 'everose_notif_channels';
+
+const CHANNEL_DEFS = [
+  { id: 'email',     label: 'Email',     short: 'EM',  icon: 'mail',  color: '#EA4335', bg: 'rgba(234,67,53,0.14)',   field: 'address',  placeholder: 'manager@everose.com',   hint: 'Email address to receive alert messages.' },
+  { id: 'sms',       label: 'SMS',       short: 'SMS', icon: 'phone', color: '#4CAF50', bg: 'rgba(76,175,80,0.14)',   field: 'phone',    placeholder: '+639XXXXXXXXX',          hint: 'Mobile number with country code. (+63 for Philippines)' },
+  { id: 'whatsapp',  label: 'WhatsApp',  short: 'WA',  icon: 'send',  color: '#25D366', bg: 'rgba(37,211,102,0.14)', field: 'phone',    placeholder: '+639XXXXXXXXX',          hint: 'WhatsApp number with country code. Opens wa.me link.' },
+  { id: 'viber',     label: 'Viber',     short: 'VB',  icon: 'phone', color: '#7360F2', bg: 'rgba(115,96,242,0.14)', field: 'phone',    placeholder: '+639XXXXXXXXX',          hint: 'Viber number with country code. Opens viber:// deep link.' },
+  { id: 'messenger', label: 'Messenger', short: 'MS',  icon: 'mail',  color: '#0084FF', bg: 'rgba(0,132,255,0.14)',  field: 'username', placeholder: 'yourpageusername',       hint: 'Facebook Page username or profile slug (e.g. EveroseMarketing).' },
+];
+
+function defaultChannelState() {
+  return Object.fromEntries(CHANNEL_DEFS.map(c => [c.id, { enabled: false, [c.field]: '' }]));
+}
+
+function useNotifChannels() {
+  const [channels, setChannels] = React.useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(NOTIF_CHANNELS_KEY) || 'null');
+      return saved ? { ...defaultChannelState(), ...saved } : defaultChannelState();
+    } catch(e) { return defaultChannelState(); }
+  });
+
+  const updateChannel = React.useCallback((id, patch) => {
+    setChannels(prev => {
+      const next = { ...prev, [id]: { ...(prev[id] || {}), ...patch } };
+      localStorage.setItem(NOTIF_CHANNELS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const activeChannels = CHANNEL_DEFS.filter(c => {
+    const cfg = channels[c.id];
+    return cfg && cfg.enabled && (cfg[c.field] || '').trim();
+  });
+
+  return { channels, updateChannel, activeChannels };
+}
+
+function cleanPhone(ph) { return (ph || '').replace(/[^\d]/g, ''); }
+
+function buildMsg(notif, multi) {
+  if (multi) {
+    const lines = multi.map(n => '[' + (n.severity === 'out' ? 'CRITICAL' : 'WARNING') + '] ' + n.title + ': ' + n.body);
+    return 'Everose ERP — ' + multi.length + ' Alert' + (multi.length > 1 ? 's' : '') + '\n\n' + lines.join('\n\n') + '\n\n— Everose Marketing Corp.';
+  }
+  return '[Everose ERP ' + (notif.severity === 'out' ? 'CRITICAL' : 'WARNING') + '] ' + notif.title + '\n\n' + notif.body + '\n\n— Everose Marketing Corp.';
+}
+
+function dispatchChannel(channelId, channelsCfg, notif, multi) {
+  const cfg = channelsCfg[channelId] || {};
+  const msg = encodeURIComponent(buildMsg(notif, multi));
+  switch (channelId) {
+    case 'email': {
+      const def = CHANNEL_DEFS.find(c => c.id === 'email');
+      const sub = encodeURIComponent('[Everose ERP] ' + (multi ? multi.length + ' Alerts' : notif.title));
+      window.open('mailto:' + (cfg.address || '') + '?subject=' + sub + '&body=' + msg);
+      break;
+    }
+    case 'sms': {
+      // sms: URI works on most mobile browsers
+      window.open('sms:' + (cfg.phone || '') + '?body=' + msg);
+      break;
+    }
+    case 'whatsapp': {
+      window.open('https://wa.me/' + cleanPhone(cfg.phone) + '?text=' + msg);
+      break;
+    }
+    case 'viber': {
+      window.open('viber://chat?number=' + cleanPhone(cfg.phone));
+      break;
+    }
+    case 'messenger': {
+      const slug = (cfg.username || '').replace(/^https?:\/\/(www\.)?(facebook\.com|m\.me)\//, '').replace(/\/$/, '');
+      window.open('https://m.me/' + encodeURIComponent(slug));
+      break;
+    }
+  }
+}
+
+/* ── Channel badge pill ── */
+function ChannelBadge({ def, size = 'sm', onClick, title }) {
+  return (
+    <button onClick={onClick} title={title || ('Send via ' + def.label)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: size === 'sm' ? 28 : 34, height: size === 'sm' ? 22 : 28,
+        borderRadius: 5, border: '1px solid ' + def.color + '60',
+        background: def.bg, color: def.color,
+        fontSize: size === 'sm' ? 9.5 : 11, fontWeight: 800, cursor: 'pointer',
+        letterSpacing: '0.02em', transition: 'opacity .12s, transform .12s',
+        padding: 0,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.opacity = '0.75'; e.currentTarget.style.transform = 'scale(1.08)'; }}
+      onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; }}>
+      {def.short}
+    </button>
+  );
+}
+
+/* ── Channel Settings View ── */
+function ChannelSettingsView({ channels, updateChannel, activeChannels, notifs, toast }) {
+  const [testResult, setTestResult] = React.useState({});
+
+  function testChannel(def) {
+    const cfg = channels[def.id] || {};
+    if (!(cfg[def.field] || '').trim()) { setTestResult(p => ({ ...p, [def.id]: 'error' })); return; }
+    dispatchChannel(def.id, channels, {
+      severity: 'warn', title: 'Test Alert — ' + def.label,
+      body: 'This is a test notification from Everose ERP. Channel is working correctly.',
+    }, null);
+    setTestResult(p => ({ ...p, [def.id]: 'sent' }));
+    setTimeout(() => setTestResult(p => ({ ...p, [def.id]: null })), 3000);
+  }
+
+  return (
+    <div style={{ padding: '4px 0 16px' }}>
+      <div style={{ padding: '12px 18px 6px', fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.6 }}>
+        Configure where to send ERP alerts. Enable a channel and enter the contact details.
+        All notifications open the messaging app — no server required.
+      </div>
+
+      {CHANNEL_DEFS.map(def => {
+        const cfg = channels[def.id] || {};
+        const isOn = cfg.enabled && (cfg[def.field] || '').trim();
+        const res = testResult[def.id];
+
+        return (
+          <div key={def.id} style={{
+            margin: '8px 14px', borderRadius: 10,
+            border: '1px solid ' + (cfg.enabled ? def.color + '55' : 'var(--line-soft)'),
+            background: cfg.enabled ? def.bg : 'var(--panel)',
+            overflow: 'hidden', transition: 'border .2s, background .2s',
+          }}>
+            {/* channel header row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: cfg.enabled ? def.color : 'var(--panel-2)',
+                color: cfg.enabled ? '#fff' : 'var(--ink-3)', flex: 'none',
+              }}>
+                <Icon name={def.icon} size={15} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: cfg.enabled ? 'var(--ink)' : 'var(--ink-2)' }}>{def.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{isOn ? '● Active' : 'Disabled'}</div>
+              </div>
+              {/* toggle */}
+              <button onClick={() => updateChannel(def.id, { enabled: !cfg.enabled })}
+                style={{
+                  width: 42, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', position: 'relative',
+                  background: cfg.enabled ? def.color : 'var(--line)', transition: 'background .2s',
+                }}>
+                <span style={{
+                  position: 'absolute', top: 3, left: cfg.enabled ? 20 : 3,
+                  width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                  transition: 'left .2s', boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                }} />
+              </button>
+            </div>
+
+            {/* config inputs (visible when enabled) */}
+            {cfg.enabled && (
+              <div style={{ padding: '0 14px 12px', borderTop: '1px solid ' + def.color + '30' }}>
+                <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 5, marginTop: 8 }}>{def.hint}</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type={def.id === 'email' ? 'email' : 'text'}
+                    value={cfg[def.field] || ''}
+                    onChange={e => updateChannel(def.id, { [def.field]: e.target.value })}
+                    placeholder={def.placeholder}
+                    style={{
+                      flex: 1, height: 34, padding: '0 10px', borderRadius: 7, fontSize: 12.5,
+                      border: '1px solid ' + def.color + '55', background: 'var(--bg)', color: 'var(--ink)',
+                      outline: 'none',
+                    }}
+                  />
+                  <button onClick={() => testChannel(def)}
+                    style={{
+                      padding: '0 12px', height: 34, borderRadius: 7, fontSize: 12, fontWeight: 700,
+                      border: '1px solid ' + def.color + '80', background: def.bg, color: def.color, cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}>
+                    {res === 'sent' ? '✓ Sent' : res === 'error' ? '✗ Fill field' : 'Test'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* bulk send section */}
+      {activeChannels.length > 0 && notifs.length > 0 && (
+        <div style={{ margin: '14px 14px 0', padding: 14, borderRadius: 10, background: 'var(--panel)', border: '1px solid var(--line-soft)' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)', marginBottom: 10 }}>
+            Bulk Send — {notifs.length} Active Alert{notifs.length !== 1 ? 's' : ''}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {activeChannels.map(def => (
+              <button key={def.id} onClick={() => dispatchChannel(def.id, channels, null, notifs)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8,
+                  border: '1px solid ' + def.color + '60', background: def.bg, color: def.color,
+                  fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                }}>
+                <Icon name={def.icon} size={13} />
+                All via {def.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Main Notification Panel ── */
+function NotificationPanel({ open, onClose, notifs, readIds, unreadCount, markRead, markAllRead, clearRead, onNavigate, toast }) {
+  const [filter, setFilter] = React.useState('all'); // 'all' | 'unread' | 'channels'
+  const { channels, updateChannel, activeChannels } = useNotifChannels();
+
+  React.useEffect(() => {
+    if (!open) return;
+    const fn = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', fn);
+    return () => document.removeEventListener('keydown', fn);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  function timeLabel(ts) {
+    const diff = Date.now() - ts;
+    const m = Math.floor(diff / 60000);
+    if (m < 2) return 'just now';
+    if (m < 60) return m + 'm ago';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + 'h ago';
+    return Math.floor(h / 24) + 'd ago';
+  }
+
+  const criticalCount = notifs.filter(n => n.severity === 'out' && !readIds.has(n.id)).length;
+  const warnCount     = notifs.filter(n => n.severity === 'warn' && !readIds.has(n.id)).length;
+
+  const groups = { stock: [], po: [], ar: [], system: [] };
+  notifs.forEach(n => { if (groups[n.type]) groups[n.type].push(n); });
+  const activeTypes = Object.entries(groups).filter(([, arr]) => arr.length > 0);
+  const filteredNotifs = filter === 'unread' ? notifs.filter(n => !readIds.has(n.id)) : notifs;
+
+  const TABS = [
+    { v: 'all',      label: 'All (' + notifs.length + ')' },
+    { v: 'unread',   label: 'Unread (' + unreadCount + ')' },
+    { v: 'channels', label: '⚙ Channels (' + activeChannels.length + ')' },
+  ];
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 290, backdropFilter: 'blur(2px)' }} />
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: 420, maxWidth: '96vw',
+        background: 'var(--bg)', borderLeft: '1px solid var(--line-soft)',
+        zIndex: 300, display: 'flex', flexDirection: 'column',
+        boxShadow: '-10px 0 40px rgba(0,0,0,0.3)',
+        animation: 'slideInR .22s cubic-bezier(.32,.72,0,1)',
+      }}>
+
+        {/* ── Header ── */}
+        <div style={{ padding: '16px 18px 0', borderBottom: '1px solid var(--line-soft)', flex: 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
+            <Icon name="bell" size={16} style={{ color: 'var(--accent-text)', flex: 'none' }} />
+            <span style={{ fontWeight: 700, fontSize: 15, flex: 1 }}>Notifications</span>
+            {unreadCount > 0 && (
+              <span style={{
+                background: criticalCount > 0 ? 'var(--out)' : 'var(--low)',
+                color: '#fff', borderRadius: 20, padding: '1px 8px',
+                fontSize: 11, fontWeight: 800,
+              }}>{unreadCount}</span>
+            )}
+            {/* active channel badges */}
+            {activeChannels.length > 0 && (
+              <div style={{ display: 'flex', gap: 3 }}>
+                {activeChannels.map(def => (
+                  <span key={def.id} title={def.label + ' active'} style={{
+                    width: 22, height: 14, borderRadius: 3, background: def.bg, color: def.color,
+                    fontSize: 7.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1px solid ' + def.color + '55',
+                  }}>{def.short}</span>
+                ))}
+              </div>
+            )}
+            {filter !== 'channels' && <button className="btn sm ghost" onClick={markAllRead} style={{ fontSize: 11, color: 'var(--ink-3)' }}>Mark read</button>}
+            <button className="btn icon ghost" onClick={onClose}><Icon name="x" size={15} /></button>
+          </div>
+
+          {/* severity chips */}
+          {filter !== 'channels' && (criticalCount > 0 || warnCount > 0) && (
+            <div style={{ display: 'flex', gap: 5, marginBottom: 9, flexWrap: 'wrap' }}>
+              {criticalCount > 0 && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'oklch(0.40 0.14 20 / 0.18)', border: '1px solid oklch(0.55 0.16 20 / 0.35)', borderRadius: 20, padding: '2px 9px', fontSize: 11, color: 'var(--out)', fontWeight: 700 }}>
+                  <Icon name="warning" size={11} />{criticalCount} Critical
+                </span>
+              )}
+              {warnCount > 0 && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'oklch(0.55 0.16 55 / 0.15)', border: '1px solid oklch(0.65 0.16 55 / 0.35)', borderRadius: 20, padding: '2px 9px', fontSize: 11, color: 'var(--low)', fontWeight: 700 }}>
+                  <Icon name="alert" size={11} />{warnCount} Warning{warnCount !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* tab bar */}
+          <div style={{ display: 'flex', gap: 2, borderBottom: 'none', marginBottom: -1 }}>
+            {TABS.map(tab => (
+              <button key={tab.v} onClick={() => setFilter(tab.v)}
+                style={{
+                  padding: '7px 13px', borderRadius: '8px 8px 0 0', fontSize: 12, fontWeight: 600,
+                  border: '1px solid ' + (filter === tab.v ? 'var(--line-soft)' : 'transparent'),
+                  borderBottom: filter === tab.v ? '1px solid var(--bg)' : 'none',
+                  background: filter === tab.v ? 'var(--bg)' : 'transparent',
+                  color: filter === tab.v ? 'var(--ink)' : 'var(--ink-3)', cursor: 'pointer',
+                  marginBottom: filter === tab.v ? -1 : 0, position: 'relative',
+                }}>{tab.label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Body ── */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+
+          {/* === CHANNEL SETTINGS === */}
+          {filter === 'channels' && (
+            <ChannelSettingsView channels={channels} updateChannel={updateChannel} activeChannels={activeChannels} notifs={notifs} toast={toast} />
+          )}
+
+          {/* === NOTIFICATION LIST === */}
+          {filter !== 'channels' && (
+            <>
+              {filteredNotifs.length === 0 && (
+                <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--ink-3)' }}>
+                  <div style={{ fontSize: 36, marginBottom: 10 }}>✓</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink-2)', marginBottom: 4 }}>
+                    {filter === 'unread' ? 'All caught up!' : 'No alerts'}
+                  </div>
+                  <div style={{ fontSize: 12.5 }}>
+                    {filter === 'unread' ? 'No unread notifications.' : 'Stock levels, POs, and AR are healthy.'}
+                  </div>
+                </div>
+              )}
+
+              {activeTypes.map(([type, items]) => {
+                const visible = filteredNotifs.filter(n => n.type === type);
+                if (visible.length === 0) return null;
+                return (
+                  <div key={type}>
+                    {/* group header */}
+                    <div style={{
+                      padding: '9px 18px 4px', fontSize: 10, fontWeight: 800, color: 'var(--ink-3)',
+                      textTransform: 'uppercase', letterSpacing: '0.08em',
+                      background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 2,
+                      borderBottom: '1px solid var(--line-soft)',
+                    }}>
+                      {NOTIF_TYPE_LABEL[type] || type} · {items.length}
+                    </div>
+
+                    {visible.map(n => {
+                      const isRead = readIds.has(n.id);
+                      return (
+                        <div key={n.id} style={{
+                          borderBottom: '1px solid var(--line-soft)',
+                          background: isRead ? 'transparent' : NOTIF_SEVER_BG[n.severity],
+                          opacity: isRead ? 0.5 : 1,
+                          transition: 'background .15s, opacity .15s',
+                        }}>
+                          {/* main row */}
+                          <div onClick={() => { markRead(n.id); onNavigate(n.route); onClose(); }}
+                            style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '11px 18px 6px', cursor: 'pointer' }}>
+                            {/* icon */}
+                            <div style={{
+                              width: 34, height: 34, borderRadius: 9, flex: 'none',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: isRead ? 'var(--panel)' : NOTIF_SEVER_BG[n.severity],
+                              border: '1px solid ' + (isRead ? 'var(--line-soft)' : NOTIF_SEVER_COLOR[n.severity] + '55'),
+                              color: isRead ? 'var(--ink-3)' : NOTIF_SEVER_COLOR[n.severity],
+                            }}>
+                              <Icon name={n.icon} size={15} />
+                            </div>
+                            {/* text */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                <span style={{ fontSize: 12.5, fontWeight: isRead ? 500 : 700, color: isRead ? 'var(--ink-2)' : 'var(--ink)', flex: 1 }}>{n.title}</span>
+                                {!isRead && <span style={{ width: 7, height: 7, borderRadius: '50%', background: NOTIF_SEVER_COLOR[n.severity], flex: 'none' }} />}
+                              </div>
+                              <div style={{ fontSize: 11.5, color: 'var(--ink-3)', lineHeight: 1.45, wordBreak: 'break-word' }}>{n.body}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
+                                <span style={{ fontSize: 10.5, color: 'var(--ink-4)' }}>{timeLabel(n.ts)}</span>
+                                <span style={{
+                                  fontSize: 9.5, fontWeight: 700, padding: '1px 7px', borderRadius: 10,
+                                  background: NOTIF_SEVER_BG[n.severity],
+                                  color: NOTIF_SEVER_COLOR[n.severity],
+                                  border: '1px solid ' + NOTIF_SEVER_COLOR[n.severity] + '40',
+                                }}>{n.severity === 'out' ? 'Critical' : n.severity === 'warn' ? 'Warning' : 'Info'}</span>
+                                <span style={{ fontSize: 10.5, color: 'var(--accent-text)', marginLeft: 'auto' }}>
+                                  {n.route === 'inventory' ? 'Inventory' : n.route === 'purchasing' ? 'Purchasing' : n.route === 'customers' ? 'Customers' : n.route} →
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* send-via channel buttons (only when channels configured) */}
+                          {activeChannels.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 18px 9px 63px' }}>
+                              <span style={{ fontSize: 10, color: 'var(--ink-4)', marginRight: 2 }}>Send via:</span>
+                              {activeChannels.map(def => (
+                                <ChannelBadge key={def.id} def={def}
+                                  onClick={e => { e.stopPropagation(); dispatchChannel(def.id, channels, n, null); markRead(n.id); }}
+                                  title={'Send this alert via ' + def.label}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+
+        {/* ── Footer ── */}
+        <div style={{ padding: '10px 18px', borderTop: '1px solid var(--line-soft)', display: 'flex', alignItems: 'center', gap: 8, flex: 'none', background: 'var(--bg)' }}>
+          {filter !== 'channels' ? (
+            <>
+              <span style={{ fontSize: 11.5, color: 'var(--ink-3)', flex: 1 }}>
+                {notifs.length} alert{notifs.length !== 1 ? 's' : ''} · {unreadCount} unread
+              </span>
+              {activeChannels.length > 0 && notifs.filter(n => n.severity === 'out').length > 0 && (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {activeChannels.slice(0, 3).map(def => (
+                    <button key={def.id}
+                      onClick={() => dispatchChannel(def.id, channels, null, notifs.filter(n => n.severity === 'out'))}
+                      title={'Send all critical via ' + def.label}
+                      style={{
+                        padding: '4px 10px', borderRadius: 6, fontSize: 10.5, fontWeight: 700,
+                        border: '1px solid ' + def.color + '55', background: def.bg, color: def.color, cursor: 'pointer',
+                      }}>
+                      <Icon name={def.icon} size={11} style={{ verticalAlign: 'middle', marginRight: 3 }} />
+                      {def.short}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button className="btn sm ghost" onClick={clearRead} style={{ fontSize: 10.5, color: 'var(--ink-4)' }}>Reset</button>
+            </>
+          ) : (
+            <>
+              <span style={{ fontSize: 11.5, color: 'var(--ink-3)', flex: 1 }}>
+                {activeChannels.length} of {CHANNEL_DEFS.length} channels active
+              </span>
+              <button className="btn sm" onClick={() => setFilter('all')} style={{ fontSize: 11.5 }}>
+                <Icon name="bell" size={13} />View Alerts
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 Object.assign(window, {
   money, money2, num, ago, STAT_LABEL, statusFromTotal, StatusBadge, Sparkline,
   StockBar, Thumb, Avatar, Sidebar, Drawer, useToasts, Toasts, Segmented,
+  useNotifications, useNotifChannels, NotificationPanel, ChannelBadge, dispatchChannel,
 });
 
 </script>
@@ -1635,19 +2288,20 @@ function useInventory(query, cat, statusF, wh, rev) {
 }
 
 /* ============ TOOLBAR ============ */
-function Toolbar({ query, setQuery, cat, setCat, statusF, setStatusF, wh, setWh, layout, setLayout, count, onNewPO }) {
+function Toolbar({ query, setQuery, cat, setCat, statusF, setStatusF, wh, setWh, layout, setLayout, count, onNewPO, onOpenProduct, onAddProduct }) {
   const whOpts = [{ value: "all", label: "All locations" }, ...DATA.WAREHOUSES.map((w) => ({ value: w.id, label: w.short }))];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 320px", minWidth: 240, maxWidth: 460, position: "relative" }}>
-          <ProductSearch query={query} setQuery={setQuery} />
+          <ProductSearch query={query} setQuery={setQuery} onOpenProduct={onOpenProduct} />
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto", flexWrap: "wrap" }}>
           <Segmented value={wh} options={whOpts} onChange={setWh} />
           <Segmented value={layout} onChange={setLayout} size="sm" options={[
             { value: "ledger", icon: "list" }, { value: "board", icon: "grid" }, { value: "command", icon: "cmd" },
           ]} />
+          <button className="btn" onClick={onAddProduct}><Icon name="plus" size={15} />Add Product</button>
           <button className="btn primary" onClick={onNewPO}><Icon name="plus" size={15} />New PO</button>
         </div>
       </div>
@@ -1678,7 +2332,7 @@ function Toolbar({ query, setQuery, cat, setCat, statusF, setStatusF, wh, setWh,
 }
 
 /* product search with rich dropdown rows (typo-tolerant) */
-function ProductSearch({ query, setQuery, onScan }) {
+function ProductSearch({ query, setQuery, onScan, onOpenProduct }) {
   const [showScan, setShowScan] = React.useState(false);
   return (
     <div>
@@ -1694,7 +2348,7 @@ function ProductSearch({ query, setQuery, onScan }) {
         const st = statusFromTotal(it.total, it.reorder * 2);
         return (
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-            <Thumb cat={it.category} size={34} />
+            <Thumb cat={it.category} size={34} photo={it.photo} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}><HL text={it.name} q={q} /></div>
               <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}><HL text={it.sku} q={q} /> · {it.brand}</div>
@@ -1714,7 +2368,13 @@ function ProductSearch({ query, setQuery, onScan }) {
         </button>
       </div>
       {showScan && <BarcodeScanner
-        onScan={(code) => { setShowScan(false); setQuery(code); }}
+        onScan={(code) => {
+          setShowScan(false);
+          const trimmed = code.trim();
+          const exact = DATA.PRODUCTS.find((p) => p.sku === trimmed || p.sku.toLowerCase() === trimmed.toLowerCase());
+          if (exact && onOpenProduct) { onOpenProduct(exact); }
+          else { setQuery(trimmed); }
+        }}
         onClose={() => setShowScan(false)} />}
     </div>
   );
@@ -1742,7 +2402,7 @@ function LedgerView({ items, query, wh, onOpen }) {
                 onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                 <td style={{ padding: "8px 14px", position: "sticky", left: 0, background: "inherit", zIndex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                    <Thumb cat={p.category} size={34} />
+                    <Thumb cat={p.category} size={34} photo={p.photo} />
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, maxWidth: 280, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}><HL text={p.name} q={query} /></div>
                       <div style={{ fontSize: 11, color: "var(--ink-3)" }}>{p.brand} · {p.category}</div>
@@ -1780,7 +2440,7 @@ function BoardView({ items, query, wh, onOpen }) {
           onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--line-strong)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--line-soft)"; e.currentTarget.style.transform = "none"; }}>
           <div style={{ display: "flex", gap: 12 }}>
-            <Thumb cat={p.category} size={56} />
+            <Thumb cat={p.category} size={56} photo={p.photo} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.25, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}><HL text={p.name} q={query} /></div>
               <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 3 }}><HL text={p.sku} q={query} /></div>
@@ -1910,7 +2570,7 @@ function CommandView({ items, query, wh, onOpen, onAddPO, rev }) {
               onMouseEnter={(e) => e.currentTarget.style.background = "var(--panel-2)"}
               onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
               <span className={"dot " + p._status} style={{ width: 9, height: 9 }} />
-              <Thumb cat={p.category} size={36} />
+              <Thumb cat={p.category} size={36} photo={p.photo} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}><HL text={p.name} q={query} /></div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}><HL text={p.sku} q={query} /> · {p.brand}</div>
@@ -1986,7 +2646,7 @@ function CommandView({ items, query, wh, onOpen, onAddPO, rev }) {
 }
 
 /* ============ SCREEN WRAPPER ============ */
-function InventoryScreen({ rev, layout, setLayout, onOpenProduct, onNewPO, onAddToPO }) {
+function InventoryScreen({ rev, layout, setLayout, onOpenProduct, onNewPO, onAddToPO, onAddProduct }) {
   const [query, setQuery] = useStateIC("");
   const [cat, setCat] = useStateIC("All");
   const [statusF, setStatusF] = useStateIC("all");
@@ -1999,7 +2659,7 @@ function InventoryScreen({ rev, layout, setLayout, onOpenProduct, onNewPO, onAdd
       <div className="card" style={{ padding: 16 }}>
         <Toolbar query={query} setQuery={setQuery} cat={cat} setCat={setCat}
           statusF={statusF} setStatusF={setStatusF} wh={wh} setWh={setWh}
-          layout={layout} setLayout={setLayout} count={items.length} onNewPO={onNewPO} />
+          layout={layout} setLayout={setLayout} count={items.length} onNewPO={onNewPO} onOpenProduct={onOpenProduct} onAddProduct={onAddProduct} />
       </div>
       {layout === "ledger" && <LedgerView items={items} query={query} wh={wh} onOpen={onOpenProduct} />}
       {layout === "board" && <BoardView items={items} query={query} wh={wh} onOpen={onOpenProduct} />}
@@ -2016,7 +2676,7 @@ Object.assign(window, { InventoryScreen, KpiStrip, Gauge, computeKpis });
 /* drawer.jsx — product detail drawer. Exports: ProductDrawer */
 const { useState: useStateD } = React;
 
-function ProductDrawer({ product, onClose, onAddPO, onAdjust }) {
+function ProductDrawer({ product, onClose, onAddPO, onAdjust, onEdit }) {
   const [tab, setTab] = useStateD("stock");
   if (!product) return null;
   const p = product;
@@ -2029,7 +2689,7 @@ function ProductDrawer({ product, onClose, onAddPO, onAdjust }) {
       {/* header */}
       <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--line-soft)", flex: "none" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-          <Thumb cat={p.category} size={64} />
+          <Thumb cat={p.category} size={64} photo={p.photo} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
               <StatusBadge status={p._status || statusFromTotal(p.total, p.reorder * 2)} />
@@ -2038,11 +2698,15 @@ function ProductDrawer({ product, onClose, onAddPO, onAdjust }) {
             <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.01em" }}>{p.name}</div>
             <div className="mono" style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 3 }}>{p.sku} · {p.brand}</div>
           </div>
-          <button className="btn icon ghost" onClick={onClose} aria-label="Close"><Icon name="x" size={16} /></button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: "none" }}>
+            <button className="btn icon ghost" onClick={onClose} aria-label="Close"><Icon name="x" size={16} /></button>
+            <button className="btn icon ghost" onClick={() => { onEdit && onEdit(p); onClose(); }} title="Edit product"><Icon name="edit" size={15} /></button>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
           <button className="btn primary" style={{ flex: 1 }} onClick={() => { onAddPO(p); onClose(); }}><Icon name="plus" size={15} />Reorder this item</button>
           <button className="btn" onClick={() => { onAdjust && onAdjust(p); onClose(); }}><Icon name="sliders" size={15} />Adjust stock</button>
+          <button className="btn" onClick={() => { onEdit && onEdit(p); onClose(); }} title="Edit product details"><Icon name="edit" size={14} />Edit</button>
         </div>
       </div>
 
@@ -2173,6 +2837,388 @@ Object.assign(window, { ProductDrawer });
 </script>
 
 <script type="text/babel">
+/* product-form.jsx — Add / Edit / Delete product drawer with photo capture.
+   Exports: ProductFormDrawer */
+const { useState: useStatePF, useEffect: useEffectPF, useRef: useRefPF } = React;
+
+const ALL_CATEGORIES = ["Refrigeration", "Laundry", "Cooking", "Living Room", "Dining", "Bedroom", "Mattresses", "Outdoor", "Small Appliances"];
+
+function FieldLabel({ children }) {
+  return (
+    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>{children}</div>
+  );
+}
+
+function Field({ label, error, children }) {
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      {children}
+      {error && <div style={{ fontSize: 11, color: "var(--low)", marginTop: 3 }}>{error}</div>}
+    </div>
+  );
+}
+
+const INPUT_STYLE = (err) => ({
+  width: "100%", padding: "8px 11px", border: "1px solid " + (err ? "var(--low)" : "var(--line)"),
+  borderRadius: 7, fontSize: 13, background: "var(--bg)", color: "var(--ink)",
+  outline: "none", fontFamily: "inherit",
+});
+const INPUT_MONO = (err) => ({ ...INPUT_STYLE(err), fontFamily: "var(--mono)" });
+
+function ProductFormDrawer({ product, onClose, onSave, onDelete }) {
+  const isNew = !product;
+  const [showScanner, setShowScanner] = useStatePF(false);
+  const [delConfirm, setDelConfirm] = useStatePF(false);
+  const [err, setErr] = useStatePF({});
+  const photoRef = useRefPF(null);
+  const cameraRef = useRefPF(null);
+
+  const initStock = () => DATA.WAREHOUSES.reduce((a, w) => {
+    a[w.id] = product?.stock?.[w.id] ?? 0; return a;
+  }, {});
+
+  const [form, setForm] = useStatePF(() => ({
+    sku: product?.sku || "",
+    name: product?.name || "",
+    category: product?.category || ALL_CATEGORIES[0],
+    brand: product?.brand || "",
+    supplierId: product?.supplierId || (DATA.SUPPLIERS[0]?.id || ""),
+    price: product?.price != null ? String(product.price) : "",
+    cost: product?.cost != null ? String(product.cost) : "",
+    reorder: product?.reorder != null ? String(product.reorder) : "",
+    valuation: product?.valuation || "AVG",
+    serialized: product?.serialized || false,
+    photo: product?.photo || null,
+    stock: initStock(),
+    notes: product?.notes || "",
+    model: product?.model || "",
+    dimensions: product?.dimensions || "",
+    warranty: product?.warranty || "",
+    color: product?.color || "",
+  }));
+
+  function set(k, v) {
+    setForm((f) => ({ ...f, [k]: v }));
+    setErr((e) => { const n = { ...e }; delete n[k]; return n; });
+  }
+
+  function handlePhoto(file) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { alert("Please select an image file."); return; }
+    if (file.size > 5 * 1024 * 1024) { alert("Image is too large (max 5 MB). Please resize it."); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => set("photo", ev.target.result);
+    reader.readAsDataURL(file);
+  }
+
+  const margin = (form.price && form.cost && +form.price > 0)
+    ? Math.round(((+form.price - +form.cost) / +form.price) * 100)
+    : null;
+
+  const stockTotal = Object.values(form.stock).reduce((s, v) => s + (parseInt(v) || 0), 0);
+
+  function validate() {
+    const e = {};
+    if (!form.sku.trim()) e.sku = "Required";
+    else if (isNew && DATA.PRODUCTS.find((p) => p.sku.toLowerCase() === form.sku.trim().toLowerCase())) e.sku = "SKU already exists";
+    if (!form.name.trim()) e.name = "Required";
+    if (!form.price || isNaN(+form.price) || +form.price <= 0) e.price = "Enter valid price";
+    if (!form.cost || isNaN(+form.cost) || +form.cost <= 0) e.cost = "Enter valid cost";
+    if (form.reorder === "" || isNaN(+form.reorder) || +form.reorder < 0) e.reorder = "Enter 0 or more";
+    return e;
+  }
+
+  function handleSave() {
+    const e = validate();
+    if (Object.keys(e).length) { setErr(e); return; }
+    const price = parseFloat(form.price), cost = parseFloat(form.cost);
+    const stock = DATA.WAREHOUSES.reduce((a, w) => { a[w.id] = parseInt(form.stock[w.id]) || 0; return a; }, {});
+    const total = Object.values(stock).reduce((s, v) => s + v, 0);
+    onSave({
+      sku: form.sku.trim(), name: form.name.trim(), category: form.category,
+      brand: form.brand.trim(), supplierId: form.supplierId, price, cost,
+      reorder: parseInt(form.reorder) || 0, valuation: form.valuation,
+      serialized: form.serialized, photo: form.photo || null,
+      stock, total, onOrder: product?.onOrder || 0,
+      margin: Math.round(((price - cost) / price) * 100),
+      trend: product?.trend || Array.from({ length: 8 }, () => 0),
+      notes: form.notes.trim(), model: form.model.trim(),
+      dimensions: form.dimensions.trim(), warranty: form.warranty.trim(),
+      color: form.color.trim(),
+    }, isNew);
+    onClose();
+  }
+
+  return (
+    <Drawer open={true} onClose={onClose} width={580}>
+      {/* Header */}
+      <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--line-soft)", flex: "none", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+          <Icon name={isNew ? "plus" : "edit"} size={16} style={{ color: "var(--accent-text)" }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 700 }}>{isNew ? "Add New Product" : "Edit Product"}</div>
+          {!isNew && <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{product.sku} · {product.name}</div>}
+        </div>
+        <button className="btn icon ghost" onClick={onClose}><Icon name="x" size={16} /></button>
+      </div>
+
+      {/* Body */}
+      <div style={{ flex: 1, overflowY: "auto" }}>
+
+        {/* ── PHOTO SECTION ── */}
+        <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--line-soft)", background: "var(--bg-2)" }}>
+          <FieldLabel>Product Photo</FieldLabel>
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+            {/* Preview box */}
+            <div
+              style={{ width: 110, height: 110, borderRadius: 12, border: "2px dashed " + (form.photo ? "var(--accent-line)" : "var(--line)"), background: form.photo ? "transparent" : "var(--bg)", overflow: "hidden", flex: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "border-color .15s" }}
+              onClick={() => photoRef.current?.click()}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--accent-text)"}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = form.photo ? "var(--accent-line)" : "var(--line)"}>
+              {form.photo
+                ? <img src={form.photo} alt="Product" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                : <div style={{ textAlign: "center", color: "var(--ink-4)", padding: 12 }}>
+                    <Icon name="image" size={28} />
+                    <div style={{ fontSize: 10.5, marginTop: 6, lineHeight: 1.4 }}>Click to<br/>upload</div>
+                  </div>
+              }
+            </div>
+            {/* Photo buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 2 }}>
+              <button className="btn" onClick={() => photoRef.current?.click()}>
+                <Icon name="upload" size={13} />Upload from Gallery
+              </button>
+              <button className="btn" onClick={() => cameraRef.current?.click()}>
+                <Icon name="camera" size={13} />Take Photo with Camera
+              </button>
+              {form.photo && (
+                <button className="btn ghost sm" style={{ color: "var(--low)" }} onClick={() => set("photo", null)}>
+                  <Icon name="trash" size={12} />Remove Photo
+                </button>
+              )}
+              <div style={{ fontSize: 10.5, color: "var(--ink-4)", lineHeight: 1.5, marginTop: 2 }}>
+                JPG, PNG or WebP · Max 5 MB<br/>
+                Tip: Use rear camera for best clarity
+              </div>
+            </div>
+            <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(e.target.files[0])} onClick={(e) => e.target.value = ""} />
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => handlePhoto(e.target.files[0])} onClick={(e) => e.target.value = ""} />
+          </div>
+        </div>
+
+        {/* ── CORE DETAILS ── */}
+        <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--line-soft)" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 14 }}>Core Details</div>
+
+          {/* SKU */}
+          <div style={{ marginBottom: 14 }}>
+            <Field label="SKU / Barcode *" error={err.sku}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={form.sku} onChange={(e) => set("sku", e.target.value)}
+                  disabled={!isNew} placeholder="e.g. APP-REF-0001"
+                  className="mono" style={{ ...INPUT_MONO(err.sku), flex: 1, background: isNew ? "var(--bg)" : "var(--bg-2)", color: isNew ? "var(--ink)" : "var(--ink-3)" }} />
+                {isNew && (
+                  <button className="btn" onClick={() => setShowScanner(true)} title="Scan barcode/QR to fill SKU">
+                    <Icon name="barcode" size={14} />Scan
+                  </button>
+                )}
+              </div>
+              {!isNew && <div style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>SKU is locked after creation.</div>}
+            </Field>
+          </div>
+
+          {/* Name */}
+          <div style={{ marginBottom: 14 }}>
+            <Field label="Product Name *" error={err.name}>
+              <input value={form.name} onChange={(e) => set("name", e.target.value)}
+                placeholder="Full product name and variant" style={INPUT_STYLE(err.name)} />
+            </Field>
+          </div>
+
+          {/* Category + Brand */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+            <Field label="Category">
+              <select value={form.category} onChange={(e) => set("category", e.target.value)} style={INPUT_STYLE(false)}>
+                {ALL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </Field>
+            <Field label="Brand">
+              <input value={form.brand} onChange={(e) => set("brand", e.target.value)}
+                placeholder="Brand or manufacturer" style={INPUT_STYLE(false)} />
+            </Field>
+          </div>
+
+          {/* Model + Color */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+            <Field label="Model No.">
+              <input value={form.model} onChange={(e) => set("model", e.target.value)}
+                placeholder="e.g. FR-2700-WH" style={INPUT_STYLE(false)} />
+            </Field>
+            <Field label="Color / Finish">
+              <input value={form.color} onChange={(e) => set("color", e.target.value)}
+                placeholder="e.g. White, Stainless" style={INPUT_STYLE(false)} />
+            </Field>
+          </div>
+
+          {/* Dimensions + Warranty */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 0 }}>
+            <Field label="Dimensions (H×W×D)">
+              <input value={form.dimensions} onChange={(e) => set("dimensions", e.target.value)}
+                placeholder="e.g. 170×60×65 cm" style={INPUT_STYLE(false)} />
+            </Field>
+            <Field label="Warranty">
+              <input value={form.warranty} onChange={(e) => set("warranty", e.target.value)}
+                placeholder="e.g. 1 year parts & labor" style={INPUT_STYLE(false)} />
+            </Field>
+          </div>
+        </div>
+
+        {/* ── PRICING ── */}
+        <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--line-soft)" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 14 }}>Pricing & Costing</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+            <Field label="Retail Price ₱ *" error={err.price}>
+              <input type="number" min="0" step="0.01" value={form.price}
+                onChange={(e) => set("price", e.target.value)} placeholder="0.00"
+                className="mono" style={INPUT_MONO(err.price)} />
+            </Field>
+            <Field label="Unit Cost ₱ *" error={err.cost}>
+              <input type="number" min="0" step="0.01" value={form.cost}
+                onChange={(e) => set("cost", e.target.value)} placeholder="0.00"
+                className="mono" style={INPUT_MONO(err.cost)} />
+            </Field>
+            <Field label="Gross Margin">
+              <div className="mono" style={{ padding: "8px 11px", borderRadius: 7, border: "1px solid var(--line-soft)", background: "var(--bg-2)", fontSize: 16, fontWeight: 700, color: margin == null ? "var(--ink-4)" : margin >= 20 ? "var(--ok)" : margin >= 0 ? "var(--warn)" : "var(--low)" }}>
+                {margin != null ? margin + "%" : "—"}
+              </div>
+            </Field>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <Field label="Reorder Point *" error={err.reorder}>
+              <input type="number" min="0" value={form.reorder}
+                onChange={(e) => set("reorder", e.target.value)} placeholder="0"
+                className="mono" style={INPUT_MONO(err.reorder)} />
+            </Field>
+            <Field label="Valuation Method">
+              <select value={form.valuation} onChange={(e) => set("valuation", e.target.value)} style={INPUT_STYLE(false)}>
+                <option value="AVG">Weighted Average</option>
+                <option value="FIFO">FIFO</option>
+              </select>
+            </Field>
+            <Field label="Serial Tracked">
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", border: "1px solid var(--line-soft)", borderRadius: 7, background: "var(--bg-2)", cursor: "pointer" }}
+                onClick={() => set("serialized", !form.serialized)}>
+                <div style={{ width: 34, height: 20, borderRadius: 99, background: form.serialized ? "var(--accent)" : "var(--line-strong)", position: "relative", transition: "background .15s", flex: "none" }}>
+                  <div style={{ position: "absolute", top: 3, left: form.serialized ? 16 : 3, width: 14, height: 14, borderRadius: 99, background: "#fff", transition: "left .15s", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
+                </div>
+                <span style={{ fontSize: 12.5, color: "var(--ink-2)", fontWeight: 500 }}>{form.serialized ? "Yes — track serials" : "No — qty only"}</span>
+              </div>
+            </Field>
+          </div>
+        </div>
+
+        {/* ── SUPPLIER ── */}
+        <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--line-soft)" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 14 }}>Supplier</div>
+          <Field label="Default Supplier">
+            <select value={form.supplierId} onChange={(e) => set("supplierId", e.target.value)} style={INPUT_STYLE(false)}>
+              {DATA.SUPPLIERS.map((s) => (
+                <option key={s.id} value={s.id}>{s.name} — {s.terms} · {s.lead}d lead</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+
+        {/* ── STOCK PER LOCATION ── */}
+        <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--line-soft)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: ".07em" }}>
+              {isNew ? "Opening Stock" : "Stock per Location"}
+            </div>
+            <div className="mono" style={{ fontSize: 12, color: "var(--ink-3)" }}>
+              Total: <strong style={{ color: stockTotal > 0 ? "var(--ok)" : "var(--ink-3)" }}>{stockTotal} u</strong>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {DATA.WAREHOUSES.map((w) => (
+              <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", border: "1px solid var(--line-soft)", borderRadius: 8, background: "var(--bg-2)" }}>
+                <Icon name="warehouse" size={14} style={{ color: "var(--accent-text)", flex: "none" }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{w.name}</div>
+                  <div style={{ fontSize: 10.5, color: "var(--ink-4)" }}>{w.type} · {w.id}</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--line)", background: "var(--bg)", cursor: "pointer", fontSize: 16, color: "var(--ink-2)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    onClick={() => setForm((f) => ({ ...f, stock: { ...f.stock, [w.id]: Math.max(0, (parseInt(f.stock[w.id]) || 0) - 1) } }))}>−</button>
+                  <input type="number" min="0" value={form.stock[w.id] || 0}
+                    onChange={(e) => setForm((f) => ({ ...f, stock: { ...f.stock, [w.id]: Math.max(0, parseInt(e.target.value) || 0) } }))}
+                    className="mono"
+                    style={{ width: 64, padding: "6px 8px", border: "1px solid var(--line)", borderRadius: 6, fontSize: 14, fontWeight: 700, textAlign: "center", background: "var(--bg)", color: "var(--ink)" }} />
+                  <button style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--line)", background: "var(--bg)", cursor: "pointer", fontSize: 16, color: "var(--ink-2)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    onClick={() => setForm((f) => ({ ...f, stock: { ...f.stock, [w.id]: (parseInt(f.stock[w.id]) || 0) + 1 } }))}>+</button>
+                  <span style={{ fontSize: 11, color: "var(--ink-4)", width: 14 }}>u</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {!isNew && (
+            <div style={{ fontSize: 11, color: "var(--ink-4)", marginTop: 8, background: "var(--bg-2)", padding: "7px 10px", borderRadius: 6, borderLeft: "3px solid var(--watch)" }}>
+              Direct edit for quick corrections. For audit-trail adjustments use the Adjust Stock button.
+            </div>
+          )}
+        </div>
+
+        {/* ── NOTES ── */}
+        <div style={{ padding: "18px 20px" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 12 }}>Internal Notes</div>
+          <Field label="Notes / Remarks">
+            <textarea value={form.notes} onChange={(e) => set("notes", e.target.value)}
+              placeholder="Any special handling, display info, or internal remarks…"
+              style={{ ...INPUT_STYLE(false), resize: "vertical", minHeight: 72, fontFamily: "inherit" }} />
+          </Field>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ padding: "12px 20px", borderTop: "1px solid var(--line-soft)", flex: "none", display: "flex", gap: 8, alignItems: "center" }}>
+        {!isNew && !delConfirm && (
+          <button className="btn ghost" style={{ color: "var(--low)" }} onClick={() => setDelConfirm(true)}>
+            <Icon name="trash" size={14} />Delete
+          </button>
+        )}
+        {!isNew && delConfirm && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "var(--low)", fontWeight: 600 }}>Delete "{product.name}"?</span>
+            <button style={{ padding: "6px 12px", background: "var(--low)", color: "#fff", border: "none", borderRadius: 7, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+              onClick={() => { onDelete(product.sku); onClose(); }}>Yes, delete</button>
+            <button className="btn ghost sm" onClick={() => setDelConfirm(false)}>Cancel</button>
+          </div>
+        )}
+        <div style={{ marginLeft: delConfirm ? 0 : "auto", display: "flex", gap: 8 }}>
+          <button className="btn ghost" onClick={onClose}>Cancel</button>
+          <button className="btn primary" onClick={handleSave}>
+            <Icon name={isNew ? "plus" : "check"} size={14} />
+            {isNew ? "Add Product" : "Save Changes"}
+          </button>
+        </div>
+      </div>
+
+      {showScanner && (
+        <BarcodeScanner
+          onScan={(code) => { set("sku", code); setShowScanner(false); }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+    </Drawer>
+  );
+}
+
+Object.assign(window, { ProductFormDrawer });
+</script>
+
+<script type="text/babel">
 /* adjust.jsx — Stock-adjust drawer: cycle count, write-off, transfer.
    Exports: StockAdjustDrawer */
 const { useState: useStateAdj, useEffect: useEffectAdj } = React;
@@ -2245,7 +3291,7 @@ function StockAdjustDrawer({ product, onClose, onConfirm }) {
     <Drawer open={!!product} onClose={onClose} width={520}>
       <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--line-soft)", flex: "none" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Thumb cat={p.category} size={46} />
+          <Thumb cat={p.category} size={46} photo={p.photo} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Adjust stock</div>
             <div className="mono" style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2 }}>{p.sku} · {p.total}u on hand</div>
@@ -2564,7 +3610,7 @@ function CreatePODrawer({ open, onClose, initial, onSubmit, toast }) {
               placeholder="Scan or search product to add…"
               render={(p, q) => (
                 <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                  <Thumb cat={p.category} size={32} />
+                  <Thumb cat={p.category} size={32} photo={p.photo} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}><HL text={p.name} q={q} /></div>
                     <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}><HL text={p.sku} q={q} /> · {money(p.cost)}</div>
@@ -2584,7 +3630,7 @@ function CreatePODrawer({ open, onClose, initial, onSubmit, toast }) {
           )}
           {lines.map((l) => (
             <div key={l.sku} className="card" style={{ padding: "10px 12px", background: "var(--panel-2)", display: "flex", alignItems: "center", gap: 11 }}>
-              <Thumb cat={(DATA.pid(l.sku) || {}).category || ""} size={34} />
+              <Thumb cat={(DATA.pid(l.sku) || {}).category || ""} size={34} photo={(DATA.pid(l.sku) || {}).photo} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{l.name}</div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{l.sku} · {money2(l.cost)}/u</div>
@@ -2864,7 +3910,7 @@ function ReceiveDrawer({ po, onClose, onConfirm, defaultWh }) {
               <div style={{ width: 20, height: 20, borderRadius: 5, flex: "none", border: "1.5px solid " + (selected ? "var(--accent)" : "var(--line-strong)"), background: selected ? "var(--accent)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {selected && <Icon name="check" size={12} style={{ color: "oklch(0.99 0 0)" }} />}
               </div>
-              <Thumb cat={p.category} size={38} />
+              <Thumb cat={p.category} size={38} photo={p.photo} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{l.name || (p.name)}</div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{l.sku} · ordered {l.qty} · received {l.recv}</div>
@@ -2983,7 +4029,7 @@ function POSScreen({ onComplete, toast, onPrint }) {
           footer={<div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--ink-3)", fontSize: 11 }}><Icon name="sparkles" size={13} style={{ color: "var(--accent-text)" }} />Typo-tolerant · <span className="kbd">↵</span> adds top match</div>}
           render={(p, q) => (
             <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-              <Thumb cat={p.category} size={32} />
+              <Thumb cat={p.category} size={32} photo={p.photo} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}><HL text={p.name} q={q} /></div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}><HL text={p.sku} q={q} /></div>
@@ -3014,7 +4060,7 @@ function POSScreen({ onComplete, toast, onPrint }) {
               <button key={p.sku} onClick={() => addProduct(p)} className="card"
                 style={{ padding: 9, textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 7, background: "var(--panel)" }}
                 onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--accent-line)"} onMouseLeave={(e) => e.currentTarget.style.borderColor = "var(--line-soft)"}>
-                <Thumb cat={p.category} size={40} />
+                <Thumb cat={p.category} size={40} photo={p.photo} />
                 <div style={{ fontSize: 11, fontWeight: 600, lineHeight: 1.2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: 26 }}>{p.name}</div>
                 <div className="mono tnum" style={{ fontSize: 12, fontWeight: 700, color: "var(--accent-text)" }}>{money(p.price)}</div>
               </button>
@@ -3036,7 +4082,7 @@ function POSScreen({ onComplete, toast, onPrint }) {
             </div>
           ) : cart.map((l) => (
             <div key={l.sku} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderBottom: "1px solid var(--line-soft)" }}>
-              <Thumb cat={l.category} size={40} />
+              <Thumb cat={l.category} size={40} photo={l.photo} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{l.name}</div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{l.sku} · {money(l.price)}</div>
@@ -3649,17 +4695,21 @@ function ReportsScreen({ rev, toast, onPrint }) {
         <span style={{ fontSize: 12, color: "var(--ink-3)" }}>Period to date · all locations</span>
         <button className="btn sm" style={{ marginLeft: "auto" }} onClick={() => {
           if (onPrint) {
-            onPrint({ kind: "report", title: "Business Report Pack", data: {
-              title: "Business Report Pack",
+            onPrint({ kind: "report", title: "Full Report Pack — " + new Date().toLocaleDateString(), data: {
+              title: "Full Report Pack",
               kpis: kpis.map(k => ({ label: k.label, value: k.value })),
               tables: [
-                { title: "Sales by Category", cols: ["Category", "Revenue"], rows: data.catRows.map(r => [r.k, "₱" + Math.round(r.v).toLocaleString()]) },
-                { title: "Top Products", cols: ["Product", "Revenue"], rows: data.topProducts.map(r => [r.p.name, "₱" + Math.round(r.v).toLocaleString()]) },
-                { title: "Supplier Spend", cols: ["Supplier", "Received (cost)"], rows: data.supplierSpend.map(r => [r.k, "₱" + Math.round(r.v).toLocaleString()]) },
+                { title: "Sales by Category", cols: ["Category", "Revenue"], rows: data.catRows.map(r=>[r.k, money(r.v)]) },
+                { title: "Sales by Location", cols: ["Location", "Revenue"], rows: data.whRows.map(r=>[r.k, money(r.v)]) },
+                { title: "Top Products by Revenue", cols: ["SKU", "Product", "Revenue"], rows: data.topProducts.map(({p,v})=>[p.sku, p.name, money(v)]) },
+                { title: "Inventory Valuation by Category", cols: ["Category", "Cost Value"], rows: data.valRows.map(r=>[r.k, money(r.v)]) },
+                { title: "Supplier Spend (received at cost)", cols: ["Supplier", "Amount"], rows: data.supplierSpend.map(r=>[r.k, money(r.v)]) },
               ]
             }});
+          } else if (window.doExportXLSX) {
+            doExportXLSX(); toast && toast("Full data exported to Excel", "ok");
           } else {
-            toast && toast("Full report pack exported (PDF)", "ok");
+            toast && toast("Full report pack exported", "ok");
           }
         }}><Icon name="receipt" size={14} />Export pack</button>
       </div>
@@ -3688,7 +4738,7 @@ function ReportsScreen({ rev, toast, onPrint }) {
             {data.topProducts.map(({ p, v }, i) => (
               <div key={p.sku} style={{ display: "flex", alignItems: "center", gap: 11, padding: "8px 0", borderBottom: i < data.topProducts.length - 1 ? "1px solid var(--line-soft)" : "none" }}>
                 <span className="mono tnum" style={{ width: 18, color: "var(--ink-4)", fontSize: 12 }}>{i + 1}</span>
-                <Thumb cat={p.category} size={32} />
+                <Thumb cat={p.category} size={32} photo={p.photo} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
                   <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{p.sku}</div>
@@ -4017,7 +5067,7 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
           {alerts.map((p) => (
             <div key={p.sku} onClick={() => onOpenProduct(p)} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 16px", borderTop: "1px solid var(--line-soft)", cursor: "pointer" }}
               onMouseEnter={(e) => e.currentTarget.style.background = "var(--panel-2)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-              <Thumb cat={p.category} size={34} />
+              <Thumb cat={p.category} size={34} photo={p.photo} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{p.sku}</div>
@@ -4095,6 +5145,1005 @@ Object.assign(window, { DashboardScreen });
 </script>
 
 <script type="text/babel">
+/* datastore.jsx — localStorage persistence, JSON/Excel export, Google Sheets sync */
+const { useState: useStateDS, useEffect: useEffectDS, useRef: useRefDS } = React;
+const STORE_KEY = 'everose_erp_v1';
+
+function saveDataNow() {
+  try {
+    const snap = {
+      v: 2, ts: Date.now(),
+      products: DATA.PRODUCTS.map(p => ({ sku: p.sku, name: p.name, category: p.category, brand: p.brand, supplierId: p.supplierId, price: p.price, cost: p.cost, reorder: p.reorder, valuation: p.valuation, serialized: p.serialized, photo: p.photo||null, stock: {...p.stock}, total: p.total, onOrder: p.onOrder||0, margin: p.margin, trend: p.trend, notes: p.notes||"", model: p.model||"", dimensions: p.dimensions||"", warranty: p.warranty||"", color: p.color||"" })),
+      movements: DATA.MOVEMENTS.slice(0, 1000),
+      pos: JSON.parse(JSON.stringify(DATA.POS)),
+      customers: JSON.parse(JSON.stringify(DATA.CUSTOMERS)),
+      creditCompanies: JSON.parse(JSON.stringify(DATA.CREDIT_COMPANIES)),
+      journal: DATA.JOURNAL.slice(0, 500),
+    };
+    localStorage.setItem(STORE_KEY, JSON.stringify(snap));
+    return snap.ts;
+  } catch(e) { return null; }
+}
+
+function loadSavedData() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return null;
+    const snap = JSON.parse(raw);
+    if (!snap || (snap.v !== 1 && snap.v !== 2)) return null;
+    if (snap.v === 2) {
+      // Full product restore (v2)
+      snap.products.forEach(s => {
+        const p = DATA.PRODUCTS.find(x => x.sku === s.sku);
+        if (p) {
+          Object.assign(p, s);
+        } else {
+          DATA.PRODUCTS.push(s); // new product added by user
+        }
+      });
+      // Remove products not in snap (deleted)
+      const snapSkus = new Set(snap.products.map(p => p.sku));
+      for (let i = DATA.PRODUCTS.length - 1; i >= 0; i--) {
+        if (!snapSkus.has(DATA.PRODUCTS[i].sku)) DATA.PRODUCTS.splice(i, 1);
+      }
+    } else {
+      // v1 partial restore
+      snap.products.forEach(s => {
+        const p = DATA.PRODUCTS.find(x => x.sku === s.sku);
+        if (!p) return;
+        Object.keys(s.stock).forEach(k => { p.stock[k] = s.stock[k]; });
+        p.total = s.total; p.onOrder = s.onOrder||0;
+        p.price = s.price; p.cost = s.cost; p.reorder = s.reorder;
+      });
+    }
+    DATA.MOVEMENTS.length = 0; DATA.MOVEMENTS.push(...snap.movements);
+    DATA.POS.length = 0; DATA.POS.push(...snap.pos);
+    if (snap.v === 2 && snap.customers) {
+      DATA.CUSTOMERS.length = 0; DATA.CUSTOMERS.push(...snap.customers);
+    } else if (snap.customers) {
+      snap.customers.forEach(s => { const c = DATA.CUSTOMERS.find(x => x.id === s.id); if (c) c.balance = s.balance||0; });
+    }
+    if (snap.v === 2 && snap.creditCompanies) {
+      DATA.CREDIT_COMPANIES.length = 0; DATA.CREDIT_COMPANIES.push(...snap.creditCompanies);
+    }
+    DATA.JOURNAL.length = 0; DATA.JOURNAL.push(...snap.journal);
+    return snap.ts;
+  } catch(e) { return null; }
+}
+
+function clearSavedData() { localStorage.removeItem(STORE_KEY); }
+
+function doExportJSON() {
+  const raw = localStorage.getItem(STORE_KEY);
+  const data = raw ? JSON.parse(raw) : { v: 1, ts: Date.now(), note: "No saved data - using demo state" };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Everose-ERP-Backup-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function doImportJSON(file, onDone) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const snap = JSON.parse(e.target.result);
+      if (!snap.v || !snap.products) throw new Error('Invalid backup file');
+      localStorage.setItem(STORE_KEY, JSON.stringify({...snap, v: 1}));
+      loadSavedData();
+      onDone(true, null);
+    } catch(err) { onDone(false, err.message); }
+  };
+  reader.readAsText(file);
+}
+
+function doExportXLSX() {
+  if (!window.XLSX) { alert('Excel export library not loaded. Please check your internet connection.'); return; }
+  const wb = XLSX.utils.book_new();
+  const prodRows = DATA.PRODUCTS.map(p => ({
+    SKU: p.sku, Name: p.name, Category: p.category, Brand: p.brand||'',
+    'Retail Price': p.price, 'Cost Price': p.cost, 'Reorder Pt': p.reorder,
+    'Total Stock': p.total, 'On Order': p.onOrder||0,
+    ...DATA.WAREHOUSES.reduce((a,w) => ({...a, [w.short]: p.stock[w.id]||0}), {})
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prodRows), 'Products');
+  const mvRows = DATA.MOVEMENTS.map(m => ({
+    ID: m.id, SKU: m.sku, Product: (DATA.pid(m.sku)||{}).name||'',
+    Type: m.type, Qty: m.qty,
+    Location: (DATA.WAREHOUSES.find(w=>w.id===m.wh)||{}).short||m.wh,
+    Reference: m.ref||'', 'Days Ago': m.days
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mvRows), 'Movements');
+  const poRows = [];
+  DATA.POS.forEach(po => {
+    const sup = DATA.SUPPLIERS.find(s=>s.id===po.supplierId)||{};
+    po.lines.forEach(l => poRows.push({
+      'PO ID': po.id, Supplier: sup.name||'', Status: po.status,
+      SKU: l.sku, Product: (DATA.pid(l.sku)||{}).name||'',
+      Ordered: l.qty, Received: l.recv, 'Unit Cost': l.cost, 'Line Total': l.qty*l.cost
+    }));
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(poRows.length ? poRows : [{}]), 'Purchase Orders');
+  const jeRows = [];
+  DATA.JOURNAL.forEach(je => je.lines.forEach(l => jeRows.push({
+    'JE ID': je.id, 'Days Ago': je.days, Memo: je.memo, Ref: je.ref||'', Type: je.kind||'',
+    'Acct Code': l.account,
+    'Acct Name': (DATA.ACCOUNTS.find(a=>a.code===l.account)||{}).name||'',
+    Debit: l.debit||0, Credit: l.credit||0
+  })));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(jeRows.length ? jeRows : [{}]), 'Journal');
+  const custRows = DATA.CUSTOMERS.map(c => ({
+    ID: c.id, Name: c.name, Type: c.type||'', 'AR Balance': c.balance||0, Phone: c.phone||''
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(custRows), 'Customers');
+  XLSX.writeFile(wb, 'Everose-ERP-' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+
+async function doSyncToGoogleSheets(url) {
+  if (!url || !url.startsWith('http')) return { ok: false, err: 'Invalid URL' };
+  try {
+    const payload = {
+      action: 'sync',
+      products: DATA.PRODUCTS.map(p => ({ sku: p.sku, name: p.name, category: p.category, total: p.total, price: p.price, cost: p.cost, onOrder: p.onOrder||0 })),
+      movements: DATA.MOVEMENTS.slice(0,500).map(m => ({ id: m.id, sku: m.sku, type: m.type, qty: m.qty, wh: m.wh, ref: m.ref||'', days: m.days })),
+      pos: DATA.POS.map(po => ({ id: po.id, supplier: (DATA.SUPPLIERS.find(s=>s.id===po.supplierId)||{}).name||'', status: po.status, total: po.lines.reduce((s,l)=>s+l.qty*l.cost,0) })),
+      journal: DATA.JOURNAL.slice(0,200).map(je => ({ id: je.id, memo: je.memo, days: je.days })),
+      customers: DATA.CUSTOMERS.map(c => ({ id: c.id, name: c.name, balance: c.balance||0 })),
+      exportedAt: new Date().toISOString(),
+    };
+    await fetch(url, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+    return { ok: true };
+  } catch(e) { return { ok: false, err: e.message }; }
+}
+
+const GS_SCRIPT_TEMPLATE = `// =====================================================
+// Everose ERP — Google Apps Script (paste in a new
+// Apps Script project bound to your Google Sheet)
+// =====================================================
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (data.action === 'sync') {
+      writeSheet(ss, 'Products', ['sku','name','category','total','price','cost','onOrder'], data.products);
+      writeSheet(ss, 'Movements', ['id','sku','type','qty','wh','ref','days'], data.movements);
+      writeSheet(ss, 'PO Summary', ['id','supplier','status','total'], data.pos);
+      writeSheet(ss, 'Customers AR', ['id','name','balance'], data.customers);
+    }
+    return ok();
+  } catch(e) { return ok('error: ' + e.message); }
+}
+function writeSheet(ss, name, cols, rows) {
+  let sh = ss.getSheetByName(name);
+  if (!sh) sh = ss.insertSheet(name);
+  sh.clearContents();
+  const header = cols.map(c => c.toUpperCase());
+  const body = (rows||[]).map(r => cols.map(c => r[c] !== undefined ? r[c] : ''));
+  if (body.length) sh.getRange(1, 1, body.length+1, cols.length).setValues([header, ...body]);
+  else sh.getRange(1, 1, 1, cols.length).setValues([header]);
+}
+function ok(msg) {
+  return ContentService.createTextOutput(JSON.stringify({success: true, msg: msg||'ok'}))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+
+function DataPanel({ open, onClose, onReload }) {
+  const [gsUrl, setGsUrl] = useStateDS(() => localStorage.getItem('everose_gs_url') || '');
+  const [autoSave, setAutoSave] = useStateDS(() => localStorage.getItem('everose_autosave') !== 'off');
+  const [status, setStatus] = useStateDS('');
+  const [syncing, setSyncing] = useStateDS(false);
+  const [showScript, setShowScript] = useStateDS(false);
+  const fileRef = useRefDS(null);
+
+  useEffectDS(() => { localStorage.setItem('everose_gs_url', gsUrl); }, [gsUrl]);
+  useEffectDS(() => { localStorage.setItem('everose_autosave', autoSave ? 'on' : 'off'); }, [autoSave]);
+
+  if (!open) return null;
+
+  const Section = ({ title, icon, children }) => (
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--line-soft)' }}>
+        <Icon name={icon} size={14} style={{ color: 'var(--accent-text)' }} />
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--ink-2)' }}>{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+
+  const Btn = ({ onClick, children, variant, disabled }) => (
+    <button className={'btn ' + (variant || '') + ' sm'} onClick={onClick} disabled={disabled}
+      style={{ display: 'flex', alignItems: 'center', gap: 7 }}>{children}</button>
+  );
+
+  const lsTs = (() => { try { const r = localStorage.getItem(STORE_KEY); return r ? JSON.parse(r).ts : null; } catch(e) { return null; } })();
+  const lastSaved = lsTs ? new Date(lsTs).toLocaleString() : 'Never';
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', justifyContent: 'flex-end' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ width: 400, maxWidth: '100vw', height: '100%', background: 'var(--elev)', borderLeft: '1px solid var(--line)', display: 'flex', flexDirection: 'column', animation: 'slideIn .2s ease both', boxShadow: '-8px 0 32px oklch(0 0 0 / 0.25)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--line-soft)', flex: 'none' }}>
+          <Icon name="warehouse" size={17} style={{ color: 'var(--accent-text)' }} />
+          <span style={{ fontWeight: 700, fontSize: 15 }}>Data &amp; Storage</span>
+          <button className="btn ghost sm" style={{ marginLeft: 'auto' }} onClick={onClose}>&#x2715; Close</button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+
+          <Section title="Auto-save" icon="refresh">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', fontSize: 13 }}>
+                <input type="checkbox" checked={autoSave} onChange={e => setAutoSave(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
+                Auto-save to browser storage
+              </label>
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 12 }}>Last saved: <span className="mono">{lastSaved}</span></div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Btn variant="primary" onClick={() => { const ts = saveDataNow(); setStatus(ts ? '&#x2713; Saved at ' + new Date(ts).toLocaleTimeString() : '&#x2717; Save failed'); }}>
+                <Icon name="check" size={13} />Save now
+              </Btn>
+              <Btn onClick={() => { if (confirm('Reset all data to demo state? This cannot be undone.')) { clearSavedData(); location.reload(); } }} >
+                <Icon name="refresh" size={13} />Reset to demo
+              </Btn>
+            </div>
+            {status && <div style={{ marginTop: 10, fontSize: 12, color: status.startsWith('✓') ? 'var(--ok)' : 'var(--out)', fontWeight: 600 }}>{status}</div>}
+          </Section>
+
+          <Section title="File Backup" icon="box">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Btn onClick={doExportJSON}><Icon name="arrowR" size={13} />Export JSON backup</Btn>
+              <Btn onClick={doExportXLSX}><Icon name="arrowR" size={13} />Export to Excel (.xlsx)</Btn>
+              <div>
+                <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const f = e.target.files[0]; if (!f) return;
+                    doImportJSON(f, (ok, err) => {
+                      if (ok) { setStatus('✓ Import successful — reloading…'); setTimeout(() => { onReload && onReload(); onClose(); }, 800); }
+                      else setStatus('✗ Import failed: ' + err);
+                    });
+                    e.target.value = '';
+                  }} />
+                <Btn onClick={() => fileRef.current && fileRef.current.click()}><Icon name="truck" size={13} />Import from JSON backup</Btn>
+              </div>
+            </div>
+            <div style={{ marginTop: 10, padding: '9px 12px', borderRadius: 7, background: 'var(--panel-2)', fontSize: 11.5, color: 'var(--ink-3)', lineHeight: 1.6 }}>
+              💡 Excel file includes: <strong>Products, Movements, Purchase Orders, Journal,</strong> and <strong>Customers</strong> as separate sheets — ready to open in Excel or Google Sheets.
+            </div>
+          </Section>
+
+          <Section title="Google Sheets Sync" icon="chart">
+            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 10, lineHeight: 1.6 }}>
+              Sync inventory, sales, and purchasing data directly to a Google Spreadsheet via a Google Apps Script endpoint.
+            </div>
+            <label style={{ fontSize: 11.5, color: 'var(--ink-3)', display: 'block', marginBottom: 4 }}>Apps Script Web App URL</label>
+            <input
+              value={gsUrl} onChange={e => setGsUrl(e.target.value)}
+              placeholder="https://script.google.com/macros/s/…/exec"
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 7, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 12.5, fontFamily: 'var(--mono)', marginBottom: 10 }}
+            />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              <Btn variant="primary" disabled={!gsUrl || syncing}
+                onClick={async () => {
+                  setSyncing(true); setStatus('Syncing…');
+                  const r = await doSyncToGoogleSheets(gsUrl);
+                  setSyncing(false);
+                  setStatus(r.ok ? '✓ Data sent to Google Sheets' : '✗ Sync failed: ' + r.err);
+                }}>
+                <Icon name="arrowR" size={13} />{syncing ? 'Syncing…' : 'Sync to Google Sheets'}
+              </Btn>
+            </div>
+            <button className="btn ghost sm" style={{ fontSize: 11.5 }} onClick={() => setShowScript(s => !s)}>
+              {showScript ? '▲ Hide' : '▼ Show'} Apps Script setup code
+            </button>
+            {showScript && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 6, lineHeight: 1.6 }}>
+                  1. Open <strong>script.google.com</strong> → New project<br/>
+                  2. Paste the code below, save, then <strong>Deploy → New deployment → Web app</strong><br/>
+                  3. Set "Execute as: Me" and "Who has access: Anyone"<br/>
+                  4. Copy the deployment URL and paste it above
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <pre style={{ background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 7, padding: 12, fontSize: 10.5, overflowX: 'auto', maxHeight: 260, fontFamily: 'var(--mono)', color: 'var(--ink-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{GS_SCRIPT_TEMPLATE}</pre>
+                  <button className="btn ghost sm" style={{ position: 'absolute', top: 8, right: 8, fontSize: 11 }}
+                    onClick={() => { navigator.clipboard.writeText(GS_SCRIPT_TEMPLATE).then(() => setStatus('✓ Copied to clipboard')); }}>
+                    Copy
+                  </button>
+                </div>
+              </div>
+            )}
+          </Section>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { saveDataNow, loadSavedData, clearSavedData, doExportJSON, doImportJSON, doExportXLSX, doSyncToGoogleSheets, DataPanel });
+</script>
+
+<script type="text/babel">
+/* customers.jsx — Customers & Credit Companies management.
+   Exports: CustomersScreen */
+const { useState: useStateCS, useMemo: useMemoCS, useRef: useRefCS } = React;
+
+const CUST_TYPES = ["Walk-in", "Account", "Corporate", "Government"];
+const CUST_TERMS = ["COD", "Net 7", "Net 15", "Net 30", "Net 45", "Net 60", "Installments"];
+const CF_TYPES = ["In-house", "Bank", "Financing", "Government"];
+const CF_TERM_OPTS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
+
+/* ── CUSTOMER FORM DRAWER ── */
+function CustomerFormDrawer({ customer, onClose, onSave, onDelete }) {
+  const isNew = !customer;
+  const [delConfirm, setDelConfirm] = useStateCS(false);
+  const [err, setErr] = useStateCS({});
+  const [form, setForm] = useStateCS(() => ({
+    name: customer?.name || "",
+    phone: customer?.phone || "",
+    email: customer?.email || "",
+    address: customer?.address || "",
+    city: customer?.city || "",
+    type: customer?.type || "Account",
+    creditLimit: customer?.creditLimit != null ? String(customer.creditLimit) : "0",
+    balance: customer?.balance != null ? String(customer.balance) : "0",
+    terms: customer?.terms || "Net 30",
+    notes: customer?.notes || "",
+  }));
+
+  function set(k, v) {
+    setForm(f => ({ ...f, [k]: v }));
+    setErr(e => { const n = { ...e }; delete n[k]; return n; });
+  }
+
+  function validate() {
+    const e = {};
+    if (!form.name.trim()) e.name = "Name is required";
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Invalid email";
+    if (form.type !== "Walk-in" && (isNaN(+form.creditLimit) || +form.creditLimit < 0)) e.creditLimit = "Enter 0 or more";
+    return e;
+  }
+
+  function handleSave() {
+    const e = validate();
+    if (Object.keys(e).length) { setErr(e); return; }
+    onSave({
+      id: customer?.id || DATA.nextCustId(),
+      name: form.name.trim(), phone: form.phone.trim() || "—",
+      email: form.email.trim() || "—", address: form.address.trim(),
+      city: form.city.trim(), type: form.type,
+      creditLimit: form.type === "Walk-in" ? 0 : (parseFloat(form.creditLimit) || 0),
+      balance: parseFloat(form.balance) || 0,
+      terms: form.terms, notes: form.notes.trim(),
+    }, isNew);
+    onClose();
+  }
+
+  const IS = (err) => ({ width: "100%", padding: "8px 11px", border: "1px solid " + (err ? "var(--low)" : "var(--line)"), borderRadius: 7, fontSize: 13, background: "var(--bg)", color: "var(--ink)", fontFamily: "inherit" });
+  const Label = ({ t }) => <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>{t}</div>;
+
+  return (
+    <Drawer open={true} onClose={onClose} width={540}>
+      <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--line-soft)", flex: "none", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Icon name={isNew ? "plus" : "edit"} size={16} style={{ color: "var(--accent-text)" }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 700 }}>{isNew ? "Add Customer" : "Edit Customer"}</div>
+          {!isNew && <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{customer.id}</div>}
+        </div>
+        <button className="btn icon ghost" onClick={onClose}><Icon name="x" size={16} /></button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+          <div style={{ gridColumn: "1/-1" }}>
+            <Label t="Full Name *" />
+            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Customer full name or company" style={IS(err.name)} />
+            {err.name && <div style={{ fontSize: 11, color: "var(--low)", marginTop: 3 }}>{err.name}</div>}
+          </div>
+          <div>
+            <Label t="Phone" />
+            <input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="(088) 555-0100" style={IS(false)} />
+          </div>
+          <div>
+            <Label t="Email" />
+            <input value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@example.com" style={IS(err.email)} />
+            {err.email && <div style={{ fontSize: 11, color: "var(--low)", marginTop: 3 }}>{err.email}</div>}
+          </div>
+          <div style={{ gridColumn: "1/-1" }}>
+            <Label t="Address" />
+            <input value={form.address} onChange={e => set("address", e.target.value)} placeholder="Street address, barangay" style={IS(false)} />
+          </div>
+          <div>
+            <Label t="City / Municipality" />
+            <input value={form.city} onChange={e => set("city", e.target.value)} placeholder="Iligan City" style={IS(false)} />
+          </div>
+          <div>
+            <Label t="Customer Type" />
+            <select value={form.type} onChange={e => set("type", e.target.value)} style={IS(false)}>
+              {CUST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {form.type !== "Walk-in" && (
+          <div style={{ padding: "14px 16px", borderRadius: 8, border: "1px solid var(--accent-line)", background: "var(--accent-soft)", marginBottom: 14 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent-text)", marginBottom: 12 }}>Credit Settings</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div>
+                <Label t="Credit Limit ₱" />
+                <input type="number" min="0" step="1000" value={form.creditLimit}
+                  onChange={e => set("creditLimit", e.target.value)}
+                  className="mono" style={IS(err.creditLimit)} />
+                {err.creditLimit && <div style={{ fontSize: 11, color: "var(--low)", marginTop: 3 }}>{err.creditLimit}</div>}
+              </div>
+              <div>
+                <Label t="Current Balance ₱" />
+                <input type="number" min="0" step="0.01" value={form.balance}
+                  onChange={e => set("balance", e.target.value)}
+                  className="mono" style={IS(false)} />
+                <div style={{ fontSize: 10, color: "var(--ink-4)", marginTop: 3 }}>Opening/adjusting balance</div>
+              </div>
+              <div>
+                <Label t="Payment Terms" />
+                <select value={form.terms} onChange={e => set("terms", e.target.value)} style={IS(false)}>
+                  {CUST_TERMS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            {+form.creditLimit > 0 && +form.balance > 0 && (
+              <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                <div style={{ flex: 1, height: 6, borderRadius: 99, background: "var(--bg)", overflow: "hidden", border: "1px solid var(--line-soft)" }}>
+                  <div style={{ height: "100%", width: Math.min(100, (+form.balance / +form.creditLimit) * 100) + "%", background: (+form.balance / +form.creditLimit) > 0.8 ? "var(--low)" : "var(--accent)", borderRadius: 99 }} />
+                </div>
+                <span className="mono" style={{ fontSize: 11, color: "var(--ink-3)", whiteSpace: "nowrap" }}>
+                  {Math.round((+form.balance / +form.creditLimit) * 100)}% used
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div>
+          <Label t="Notes / Remarks" />
+          <textarea value={form.notes} onChange={e => set("notes", e.target.value)}
+            placeholder="Special instructions, credit history notes, referral…"
+            style={{ ...IS(false), resize: "vertical", minHeight: 72 }} />
+        </div>
+      </div>
+
+      <div style={{ padding: "12px 20px", borderTop: "1px solid var(--line-soft)", flex: "none", display: "flex", gap: 8, alignItems: "center" }}>
+        {!isNew && customer.id !== "C-1001" && !delConfirm && (
+          <button className="btn ghost" style={{ color: "var(--low)" }} onClick={() => setDelConfirm(true)}>
+            <Icon name="trash" size={14} />Delete
+          </button>
+        )}
+        {!isNew && delConfirm && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "var(--low)", fontWeight: 600 }}>Delete {customer.name}?</span>
+            <button style={{ padding: "6px 12px", background: "var(--low)", color: "#fff", border: "none", borderRadius: 7, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+              onClick={() => { onDelete(customer.id); onClose(); }}>Yes, delete</button>
+            <button className="btn ghost sm" onClick={() => setDelConfirm(false)}>Cancel</button>
+          </div>
+        )}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <button className="btn ghost" onClick={onClose}>Cancel</button>
+          <button className="btn primary" onClick={handleSave}>
+            <Icon name={isNew ? "plus" : "check"} size={14} />{isNew ? "Add Customer" : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </Drawer>
+  );
+}
+
+/* ── CREDIT COMPANY FORM DRAWER ── */
+function CreditCompanyFormDrawer({ company, onClose, onSave, onDelete }) {
+  const isNew = !company;
+  const [delConfirm, setDelConfirm] = useStateCS(false);
+  const [err, setErr] = useStateCS({});
+  const [form, setForm] = useStateCS(() => ({
+    name: company?.name || "",
+    type: company?.type || "Financing",
+    interestRate: company?.interestRate != null ? String(company.interestRate) : "",
+    minAmount: company?.minAmount != null ? String(company.minAmount) : "",
+    maxAmount: company?.maxAmount != null ? String(company.maxAmount) : "",
+    terms: company?.terms || [12, 24],
+    processingDays: company?.processingDays != null ? String(company.processingDays) : "3",
+    requirements: company?.requirements || "",
+    contactPerson: company?.contactPerson || "",
+    contactPhone: company?.contactPhone || "",
+    contactEmail: company?.contactEmail || "",
+    notes: company?.notes || "",
+    active: company?.active !== false,
+  }));
+
+  function set(k, v) {
+    setForm(f => ({ ...f, [k]: v }));
+    setErr(e => { const n = { ...e }; delete n[k]; return n; });
+  }
+
+  function toggleTerm(t) {
+    setForm(f => ({
+      ...f,
+      terms: f.terms.includes(t) ? f.terms.filter(x => x !== t) : [...f.terms, t].sort((a, b) => a - b),
+    }));
+  }
+
+  function validate() {
+    const e = {};
+    if (!form.name.trim()) e.name = "Company name required";
+    if (form.interestRate === "" || isNaN(+form.interestRate) || +form.interestRate < 0) e.interestRate = "Enter 0 or more";
+    if (!form.terms.length) e.terms = "Select at least one term";
+    return e;
+  }
+
+  function handleSave() {
+    const e = validate();
+    if (Object.keys(e).length) { setErr(e); return; }
+    onSave({
+      id: company?.id || DATA.nextCfId(),
+      name: form.name.trim(), type: form.type,
+      interestRate: parseFloat(form.interestRate) || 0,
+      minAmount: parseInt(form.minAmount) || 0,
+      maxAmount: parseInt(form.maxAmount) || 0,
+      terms: form.terms, processingDays: parseInt(form.processingDays) || 0,
+      requirements: form.requirements.trim(),
+      contactPerson: form.contactPerson.trim(),
+      contactPhone: form.contactPhone.trim(),
+      contactEmail: form.contactEmail.trim(),
+      notes: form.notes.trim(), active: form.active,
+    }, isNew);
+    onClose();
+  }
+
+  const IS = (err) => ({ width: "100%", padding: "8px 11px", border: "1px solid " + (err ? "var(--low)" : "var(--line)"), borderRadius: 7, fontSize: 13, background: "var(--bg)", color: "var(--ink)", fontFamily: "inherit" });
+  const Label = ({ t }) => <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>{t}</div>;
+  const typeColor = { "In-house": "var(--ok)", "Bank": "var(--accent-text)", "Financing": "var(--watch)", "Government": "var(--ink-2)" };
+
+  return (
+    <Drawer open={true} onClose={onClose} width={580}>
+      <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--line-soft)", flex: "none", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Icon name="bank" size={16} style={{ color: "var(--accent-text)" }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 700 }}>{isNew ? "Add Credit/Lending Company" : "Edit Company"}</div>
+          {!isNew && <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{company.id}</div>}
+        </div>
+        <button className="btn icon ghost" onClick={onClose}><Icon name="x" size={16} /></button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+
+        {/* Status toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 8, background: form.active ? "var(--ok-soft, #f0fdf4)" : "var(--bg-2)", border: "1px solid " + (form.active ? "var(--ok)" : "var(--line)"), marginBottom: 16, cursor: "pointer" }}
+          onClick={() => set("active", !form.active)}>
+          <div style={{ width: 38, height: 22, borderRadius: 99, background: form.active ? "var(--ok)" : "var(--line-strong)", position: "relative", transition: "background .15s", flex: "none" }}>
+            <div style={{ position: "absolute", top: 3, left: form.active ? 18 : 3, width: 16, height: 16, borderRadius: 99, background: "#fff", transition: "left .15s" }} />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: form.active ? "var(--ok)" : "var(--ink-3)" }}>
+            {form.active ? "Active — shown at POS checkout" : "Inactive — hidden from POS"}
+          </span>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+          <div style={{ gridColumn: "1/-1" }}>
+            <Label t="Company / Program Name *" />
+            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Home Credit Philippines" style={IS(err.name)} />
+            {err.name && <div style={{ fontSize: 11, color: "var(--low)", marginTop: 3 }}>{err.name}</div>}
+          </div>
+          <div>
+            <Label t="Type" />
+            <select value={form.type} onChange={e => set("type", e.target.value)} style={IS(false)}>
+              {CF_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label t="Interest Rate (% / month)" />
+            <input type="number" min="0" step="0.01" value={form.interestRate}
+              onChange={e => set("interestRate", e.target.value)}
+              placeholder="0 = zero interest" className="mono" style={IS(err.interestRate)} />
+            {err.interestRate && <div style={{ fontSize: 11, color: "var(--low)", marginTop: 3 }}>{err.interestRate}</div>}
+            {form.interestRate === "0" || form.interestRate === "" ? null : (
+              <div style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>
+                ≈ {(+form.interestRate * 12).toFixed(1)}% per annum
+              </div>
+            )}
+          </div>
+          <div>
+            <Label t="Min Amount ₱" />
+            <input type="number" min="0" step="500" value={form.minAmount}
+              onChange={e => set("minAmount", e.target.value)}
+              className="mono" style={IS(false)} placeholder="0" />
+          </div>
+          <div>
+            <Label t="Max Amount ₱" />
+            <input type="number" min="0" step="1000" value={form.maxAmount}
+              onChange={e => set("maxAmount", e.target.value)}
+              className="mono" style={IS(false)} placeholder="0 = no max" />
+          </div>
+          <div>
+            <Label t="Processing Time (days)" />
+            <input type="number" min="0" step="1" value={form.processingDays}
+              onChange={e => set("processingDays", e.target.value)}
+              className="mono" style={IS(false)} placeholder="0 = same day" />
+          </div>
+        </div>
+
+        {/* Terms */}
+        <div style={{ marginBottom: 14 }}>
+          <Label t="Available Terms (months) *" />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {CF_TERM_OPTS.map(t => {
+              const on = form.terms.includes(t);
+              return (
+                <button key={t} onClick={() => toggleTerm(t)}
+                  style={{ padding: "6px 14px", borderRadius: 20, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: "1.5px solid " + (on ? "var(--accent)" : "var(--line)"), background: on ? "var(--accent-soft)" : "var(--bg)", color: on ? "var(--accent-text)" : "var(--ink-3)" }}>
+                  {t}mo
+                </button>
+              );
+            })}
+          </div>
+          {err.terms && <div style={{ fontSize: 11, color: "var(--low)", marginTop: 4 }}>{err.terms}</div>}
+        </div>
+
+        {/* Requirements */}
+        <div style={{ marginBottom: 14 }}>
+          <Label t="Customer Requirements" />
+          <textarea value={form.requirements} onChange={e => set("requirements", e.target.value)}
+            placeholder="List documents required from customer…"
+            style={{ ...IS(false), resize: "vertical", minHeight: 72 }} />
+        </div>
+
+        {/* Contact */}
+        <div style={{ padding: "14px 16px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--bg-2)", marginBottom: 14 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-3)", marginBottom: 12 }}>Contact Information</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div style={{ gridColumn: "1/-1" }}>
+              <Label t="Contact Person / Department" />
+              <input value={form.contactPerson} onChange={e => set("contactPerson", e.target.value)}
+                placeholder="Maria Santos — Loans Center" style={IS(false)} />
+            </div>
+            <div>
+              <Label t="Phone" />
+              <input value={form.contactPhone} onChange={e => set("contactPhone", e.target.value)}
+                placeholder="(02) 8631-8000" style={IS(false)} />
+            </div>
+            <div>
+              <Label t="Email" />
+              <input value={form.contactEmail} onChange={e => set("contactEmail", e.target.value)}
+                placeholder="loans@bank.com.ph" style={IS(false)} />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <Label t="Internal Notes" />
+          <textarea value={form.notes} onChange={e => set("notes", e.target.value)}
+            placeholder="Special arrangements, promo info, agent names…"
+            style={{ ...IS(false), resize: "vertical", minHeight: 60 }} />
+        </div>
+      </div>
+
+      <div style={{ padding: "12px 20px", borderTop: "1px solid var(--line-soft)", flex: "none", display: "flex", gap: 8, alignItems: "center" }}>
+        {!isNew && !delConfirm && (
+          <button className="btn ghost" style={{ color: "var(--low)" }} onClick={() => setDelConfirm(true)}>
+            <Icon name="trash" size={14} />Delete
+          </button>
+        )}
+        {!isNew && delConfirm && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "var(--low)", fontWeight: 600 }}>Delete {company.name}?</span>
+            <button style={{ padding: "6px 12px", background: "var(--low)", color: "#fff", border: "none", borderRadius: 7, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+              onClick={() => { onDelete(company.id); onClose(); }}>Yes, delete</button>
+            <button className="btn ghost sm" onClick={() => setDelConfirm(false)}>Cancel</button>
+          </div>
+        )}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <button className="btn ghost" onClick={onClose}>Cancel</button>
+          <button className="btn primary" onClick={handleSave}>
+            <Icon name={isNew ? "plus" : "check"} size={14} />{isNew ? "Add Company" : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </Drawer>
+  );
+}
+
+/* ── MAIN CUSTOMERS SCREEN ── */
+function CustomersScreen({ rev, bump, toast }) {
+  const [tab, setTab] = useStateCS("customers");
+  const [search, setSearch] = useStateCS("");
+  const [cfSearch, setCfSearch] = useStateCS("");
+  const [custForm, setCustForm] = useStateCS(null); // null=closed, {c:null}=new, {c:obj}=edit
+  const [cfForm, setCfForm] = useStateCS(null);
+  const [localRev, setLocalRev] = useStateCS(0);
+  const bumpLocal = () => setLocalRev(r => r + 1);
+
+  const customers = useMemoCS(() => {
+    const q = search.trim().toLowerCase();
+    return DATA.CUSTOMERS.filter(c =>
+      !q || c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q) ||
+      (c.phone && c.phone.includes(q)) || (c.email && c.email.toLowerCase().includes(q))
+    );
+  }, [search, localRev, rev]);
+
+  const creditCos = useMemoCS(() => {
+    const q = cfSearch.trim().toLowerCase();
+    return DATA.CREDIT_COMPANIES.filter(c =>
+      !q || c.name.toLowerCase().includes(q) || c.type.toLowerCase().includes(q)
+    );
+  }, [cfSearch, localRev, rev]);
+
+  const totalAR = useMemoCS(() => DATA.CUSTOMERS.reduce((s, c) => s + (c.balance || 0), 0), [localRev, rev]);
+  const totalCreditLimit = useMemoCS(() => DATA.CUSTOMERS.filter(c => c.type !== "Walk-in").reduce((s, c) => s + (c.creditLimit || 0), 0), [localRev, rev]);
+
+  function saveCustomer(data, isNew) {
+    if (isNew) {
+      DATA.CUSTOMERS.push(data);
+      toast && toast(data.name + " added", "ok");
+    } else {
+      const idx = DATA.CUSTOMERS.findIndex(c => c.id === data.id);
+      if (idx !== -1) DATA.CUSTOMERS[idx] = data;
+      toast && toast(data.name + " updated", "accent");
+    }
+    setCustForm(null); bumpLocal(); bump && bump();
+    if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
+  }
+
+  function deleteCustomer(id) {
+    const idx = DATA.CUSTOMERS.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      toast && toast(DATA.CUSTOMERS[idx].name + " removed", "out");
+      DATA.CUSTOMERS.splice(idx, 1);
+    }
+    bumpLocal(); bump && bump();
+    if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
+  }
+
+  function saveCreditCo(data, isNew) {
+    if (isNew) {
+      DATA.CREDIT_COMPANIES.push(data);
+      toast && toast(data.name + " added", "ok");
+    } else {
+      const idx = DATA.CREDIT_COMPANIES.findIndex(c => c.id === data.id);
+      if (idx !== -1) DATA.CREDIT_COMPANIES[idx] = data;
+      toast && toast(data.name + " updated", "accent");
+    }
+    setCfForm(null); bumpLocal(); bump && bump();
+    if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
+  }
+
+  function deleteCreditCo(id) {
+    const idx = DATA.CREDIT_COMPANIES.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      toast && toast(DATA.CREDIT_COMPANIES[idx].name + " removed", "out");
+      DATA.CREDIT_COMPANIES.splice(idx, 1);
+    }
+    bumpLocal(); bump && bump();
+    if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
+  }
+
+  const typeColor = { "Walk-in": "var(--ink-3)", "Account": "var(--accent-text)", "Corporate": "var(--ok)", "Government": "var(--watch)" };
+  const cfTypeColor = { "In-house": "var(--ok)", "Bank": "var(--accent-text)", "Financing": "var(--watch)", "Government": "var(--ink-2)" };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn .2s ease both" }}>
+
+      {/* KPIs */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
+        {[
+          { label: "Total customers", value: DATA.CUSTOMERS.length - 1, icon: "people", c: "var(--ink-2)", sub: "excluding walk-in" },
+          { label: "Total AR balance", value: money(totalAR), icon: "arrowR", c: "var(--watch)", sub: "accounts receivable" },
+          { label: "Total credit limit", value: money(totalCreditLimit), icon: "bank", c: "var(--accent-text)", sub: "across all accounts" },
+          { label: "Financing partners", value: DATA.CREDIT_COMPANIES.filter(c => c.active).length, icon: "sparkles", c: "var(--ok)", sub: "active companies" },
+        ].map(t => (
+          <div key={t.label} className="card" style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 3 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--ink-3)", fontSize: 11.5, fontWeight: 600 }}>
+              <Icon name={t.icon} size={14} style={{ color: t.c }} />{t.label}
+            </div>
+            <div className="mono tnum" style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.01em", color: t.c }}>{t.value}</div>
+            <div style={{ fontSize: 11, color: "var(--ink-4)" }}>{t.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <Segmented value={tab} onChange={setTab} options={[
+          { value: "customers", label: "Customers" },
+          { value: "credit", label: "Credit & Financing" },
+          { value: "ar", label: "AR Aging" },
+        ]} />
+        {tab === "customers" && (
+          <button className="btn primary" style={{ marginLeft: "auto" }} onClick={() => setCustForm({ c: null })}>
+            <Icon name="plus" size={15} />Add Customer
+          </button>
+        )}
+        {tab === "credit" && (
+          <button className="btn primary" style={{ marginLeft: "auto" }} onClick={() => setCfForm({ c: null })}>
+            <Icon name="plus" size={15} />Add Company
+          </button>
+        )}
+      </div>
+
+      {/* ── CUSTOMERS TAB ── */}
+      {tab === "customers" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ position: "relative", maxWidth: 400 }}>
+            <Icon name="search" size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-4)", pointerEvents: "none" }} />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search name, phone, ID…"
+              style={{ width: "100%", paddingLeft: 32, paddingRight: 10, paddingTop: 8, paddingBottom: 8, border: "1px solid var(--line)", borderRadius: 8, fontSize: 13, background: "var(--bg)", color: "var(--ink)", fontFamily: "inherit" }} />
+          </div>
+          <div className="card" style={{ overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
+                <thead><tr style={{ background: "var(--bg-2)", borderBottom: "1px solid var(--line)" }}>
+                  {["Customer", "Type", "Phone / Email", "Terms", "Credit Limit", "Balance", ""].map((h, i) => (
+                    <th key={i} style={{ textAlign: i >= 4 ? "right" : "left", padding: "10px 14px", fontSize: 10.5, fontWeight: 700, letterSpacing: ".05em", color: "var(--ink-3)", textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {customers.map(c => {
+                    const used = c.creditLimit > 0 ? Math.round((c.balance / c.creditLimit) * 100) : 0;
+                    const isWalkin = c.id === "C-1001";
+                    return (
+                      <tr key={c.id} style={{ borderBottom: "1px solid var(--line-soft)", cursor: "pointer" }}
+                        onClick={() => setCustForm({ c })}
+                        onMouseEnter={e => e.currentTarget.style.background = "var(--panel-2)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                        <td style={{ padding: "10px 14px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <Avatar name={c.name} size={30} />
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</div>
+                              <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)" }}>{c.id}{c.city ? " · " + c.city : ""}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: "10px 14px" }}>
+                          <span className="badge" style={{ fontSize: 10, background: "transparent", color: typeColor[c.type] || "var(--ink-3)", border: "1.5px solid " + (typeColor[c.type] || "var(--line)") }}>{c.type}</span>
+                        </td>
+                        <td style={{ padding: "10px 14px" }}>
+                          <div style={{ fontSize: 12.5 }}>{c.phone !== "—" ? c.phone : ""}</div>
+                          <div style={{ fontSize: 11, color: "var(--ink-3)" }}>{c.email !== "—" ? c.email : ""}</div>
+                        </td>
+                        <td style={{ padding: "10px 14px", fontSize: 12.5, color: "var(--ink-2)" }}>{isWalkin ? "—" : c.terms}</td>
+                        <td className="mono tnum" style={{ padding: "10px 14px", textAlign: "right", fontSize: 12.5, color: isWalkin ? "var(--ink-4)" : "var(--ink-3)" }}>
+                          {isWalkin ? "—" : money(c.creditLimit)}
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                          {c.balance > 0 ? (
+                            <div>
+                              <div className="mono tnum" style={{ fontSize: 13, fontWeight: 700, color: used > 80 ? "var(--low)" : "var(--ink)" }}>{money(c.balance)}</div>
+                              {c.creditLimit > 0 && (
+                                <div style={{ height: 3, borderRadius: 99, background: "var(--line-soft)", marginTop: 4, width: 64, marginLeft: "auto" }}>
+                                  <div style={{ height: "100%", width: Math.min(100, used) + "%", background: used > 80 ? "var(--low)" : "var(--accent)", borderRadius: 99 }} />
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ color: "var(--ink-4)", fontSize: 12 }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ padding: "10px 8px", textAlign: "right" }}>
+                          <Icon name="edit" size={13} style={{ color: "var(--ink-4)" }} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {customers.length === 0 && (
+              <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--ink-3)" }}>
+                <Icon name="people" size={24} style={{ marginBottom: 8 }} />
+                <div style={{ fontSize: 13, fontWeight: 600 }}>No customers found</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── CREDIT & FINANCING TAB ── */}
+      {tab === "credit" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ position: "relative", maxWidth: 400 }}>
+            <Icon name="search" size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-4)", pointerEvents: "none" }} />
+            <input value={cfSearch} onChange={e => setCfSearch(e.target.value)}
+              placeholder="Search company or type…"
+              style={{ width: "100%", paddingLeft: 32, paddingRight: 10, paddingTop: 8, paddingBottom: 8, border: "1px solid var(--line)", borderRadius: 8, fontSize: 13, background: "var(--bg)", color: "var(--ink)", fontFamily: "inherit" }} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))", gap: 14 }}>
+            {creditCos.map(c => (
+              <div key={c.id} className="card" onClick={() => setCfForm({ c })}
+                style={{ padding: 16, cursor: "pointer", opacity: c.active ? 1 : 0.55 }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "var(--line-strong)"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = ""}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 9, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                    <Icon name="bank" size={18} style={{ color: cfTypeColor[c.type] || "var(--accent-text)" }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <span className="badge" style={{ fontSize: 9.5, color: cfTypeColor[c.type], border: "1.5px solid " + cfTypeColor[c.type], background: "transparent" }}>{c.type}</span>
+                      {c.active ? <span className="badge ok" style={{ fontSize: 9.5 }}>Active</span> : <span className="badge neutral" style={{ fontSize: 9.5 }}>Inactive</span>}
+                    </div>
+                  </div>
+                  <button className="btn icon ghost sm" onClick={e => { e.stopPropagation(); setCfForm({ c }); }}><Icon name="edit" size={13} /></button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                  {[
+                    ["Interest rate", c.interestRate === 0 ? "0% (zero-int.)" : c.interestRate + "% / mo"],
+                    ["Processing", c.processingDays === 0 ? "Same day" : c.processingDays + " days"],
+                    ["Min amount", c.minAmount > 0 ? money(c.minAmount) : "No minimum"],
+                    ["Max amount", c.maxAmount > 0 ? money(c.maxAmount) : "No maximum"],
+                  ].map(([l, v]) => (
+                    <div key={l}>
+                      <div style={{ fontSize: 10, color: "var(--ink-4)", marginBottom: 1 }}>{l}</div>
+                      <div className="mono" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: "var(--ink-4)", marginBottom: 5 }}>Available terms</div>
+                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                    {c.terms.map(t => (
+                      <span key={t} className="badge accent" style={{ fontSize: 10 }}>{t}mo</span>
+                    ))}
+                  </div>
+                </div>
+                {c.requirements && (
+                  <div style={{ fontSize: 11, color: "var(--ink-3)", lineHeight: 1.5, borderTop: "1px solid var(--line-soft)", paddingTop: 9, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    <strong style={{ color: "var(--ink-2)" }}>Requires:</strong> {c.requirements}
+                  </div>
+                )}
+                {c.contactPerson && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 9, fontSize: 11.5, color: "var(--ink-2)" }}>
+                    <Icon name="phone" size={12} style={{ color: "var(--ink-4)" }} />
+                    {c.contactPerson}{c.contactPhone ? " · " + c.contactPhone : ""}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {creditCos.length === 0 && (
+            <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--ink-3)" }}>
+              <Icon name="bank" size={24} style={{ marginBottom: 8 }} />
+              <div style={{ fontSize: 13, fontWeight: 600 }}>No financing companies found</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── AR AGING TAB ── */}
+      {tab === "ar" && <ARView />}
+
+      {/* Drawers */}
+      {custForm && (
+        <CustomerFormDrawer customer={custForm.c} onClose={() => setCustForm(null)}
+          onSave={saveCustomer} onDelete={deleteCustomer} />
+      )}
+      {cfForm && (
+        <CreditCompanyFormDrawer company={cfForm.c} onClose={() => setCfForm(null)}
+          onSave={saveCreditCo} onDelete={deleteCreditCo} />
+      )}
+    </div>
+  );
+}
+
+Object.assign(window, { CustomersScreen });
+</script>
+
+<script type="text/babel">
 /* app.jsx — root: routing, mutable state, topbar, drawers, toasts, tweaks. */
 const { useState: useS, useEffect: useE, useCallback: useCb } = React;
 
@@ -4113,6 +6162,7 @@ const ROUTE_META = {
   purchasing: { title: "Purchase orders", sub: "Suggested reorders & open POs" },
   receiving: { title: "Receiving", sub: "Receive stock against purchase orders" },
   suppliers: { title: "Suppliers", sub: "Vendors, terms & lead times" },
+  customers: { title: "Customers & Credit", sub: "Customer accounts, credit limits & financing companies" },
   accounting: { title: "Accounting", sub: "Double-entry ledger, AR/AP & reports" },
   reports: { title: "Reports", sub: "Sales, inventory & purchasing analytics" },
 };
@@ -4140,11 +6190,17 @@ function App() {
 
   // drawers
   const [product, setProduct] = useS(null);
+  const [productForm, setProductForm] = useS(null); // null=closed, {product:null}=new, {product:p}=edit
   const [adjustProduct, setAdjustProduct] = useS(null);
   const [createPO, setCreatePO] = useS(null);   // {open, initial}
   const [receivePO, setReceivePO] = useS(null);
   const [batchPOs, setBatchPOs] = useS(null);
   const [printDoc, setPrintDoc] = useS(null);
+  const [showDataPanel, setShowDataPanel] = useS(false);
+  const [showNotif, setShowNotif] = useS(false);
+
+  // notification system
+  const { notifs, unreadCount, readIds, markRead, markAllRead, clearRead } = useNotifications(rev);
 
   // apply tweaks to :root
   useE(() => {
@@ -4161,6 +6217,43 @@ function App() {
   const alertCount = DATA.PRODUCTS.filter((p) => { const s = statusFromTotal(p.total, p.reorder * 2); return s === "out" || s === "low"; }).length;
 
   /* ----- actions ----- */
+  const saveProduct = useCb((data, isNew) => {
+    if (isNew) {
+      DATA.PRODUCTS.push(data);
+      DATA.WAREHOUSES.forEach((w) => {
+        const qty = data.stock[w.id] || 0;
+        if (qty > 0) {
+          DATA.MOVEMENTS.unshift({ id: "MV-" + Math.floor(Math.random() * 90000 + 10000), sku: data.sku, type: "Adjustment", qty, wh: w.id, ref: "Opening stock", days: 0 });
+        }
+      });
+      pushToast(data.sku + " · " + data.name + " added", "ok");
+    } else {
+      const idx = DATA.PRODUCTS.findIndex((p) => p.sku === data.sku);
+      if (idx !== -1) {
+        const old = DATA.PRODUCTS[idx];
+        DATA.WAREHOUSES.forEach((w) => {
+          const delta = (data.stock[w.id] || 0) - (old.stock[w.id] || 0);
+          if (delta !== 0) DATA.MOVEMENTS.unshift({ id: "MV-" + Math.floor(Math.random() * 90000 + 10000), sku: data.sku, type: "Adjustment", qty: delta, wh: w.id, ref: "Product edit", days: 0 });
+        });
+        DATA.PRODUCTS[idx] = data;
+      }
+      pushToast(data.name + " · updated", "accent");
+    }
+    setProductForm(null); bump();
+    if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
+  }, [pushToast, bump]);
+
+  const deleteProduct = useCb((sku) => {
+    const idx = DATA.PRODUCTS.findIndex((p) => p.sku === sku);
+    if (idx !== -1) {
+      const name = DATA.PRODUCTS[idx].name;
+      DATA.PRODUCTS.splice(idx, 1);
+      pushToast(sku + " · " + name + " deleted", "out");
+      bump();
+      if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
+    }
+  }, [pushToast, bump]);
+
   const openAddToPO = useCb((p) => {
     const sup = DATA.SUPPLIERS.find((s) => s.id === p.supplierId);
     setCreatePO({ open: true, initial: { supplier: sup, lines: [{ sku: p.sku, name: p.name, qty: Math.max(1, p.reorder * 2), cost: p.cost }] } });
@@ -4176,6 +6269,7 @@ function App() {
     lines.forEach((l) => { const p = DATA.pid(l.sku); if (p) p.onOrder += l.qty; });
     setCreatePO(null); bump();
     pushToast(id + " created · " + lines.length + " lines", "accent");
+    if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
   }, [pushToast, bump]);
 
   const confirmAdjust = useCb((p, changes, mode) => {
@@ -4189,6 +6283,7 @@ function App() {
     setAdjustProduct(null); bump();
     const verb = mode === "transfer" ? "Stock transferred" : mode === "writeoff" ? "Write-off posted" : "Count adjusted";
     pushToast(verb + " · " + p.sku + " now " + p.total + "u", mode === "writeoff" ? "out" : "ok");
+    if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
   }, [pushToast, bump]);
 
   const confirmReceive = useCb((po, recvLines, wh) => {
@@ -4203,6 +6298,7 @@ function App() {
     if (allDone) po.eta = -1;
     setReceivePO(null); bump();
     pushToast(units + "u received into " + DATA.WAREHOUSES.find((w) => w.id === wh).short + " · stock & AP updated", "ok");
+    if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
   }, [pushToast, bump]);
 
   const confirmBatchReceive = useCb((batchList, wh) => {
@@ -4220,6 +6316,7 @@ function App() {
     });
     setBatchPOs(null); bump();
     pushToast(units + "u across " + count + " POs received into " + DATA.WAREHOUSES.find((w) => w.id === wh).short, "ok");
+    if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
   }, [pushToast, bump]);
 
   const completeSale = useCb((sale) => {
@@ -4251,6 +6348,7 @@ function App() {
     if (cogs > 0) DATA.JOURNAL.unshift(DATA.newJE(0, "COGS — " + sale.saleId, sale.saleId, "Sale", [L("5000", cogs, 0), L("1200", 0, cogs)]));
     bump();
     pushToast(sale.saleId + " · " + money(sale.total) + " — journal posted", "ok");
+    if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
   }, [pushToast, bump]);
 
   const collapsed = vp === "tablet";
@@ -4287,6 +6385,22 @@ function App() {
               <span className="dot ok" style={{ width: 7, height: 7 }} />{vp !== "mobile" && "Synced · "}<span className="mono">live</span>
             </div>
             {vp !== "mobile" && <button className="btn sm" onClick={() => { setRoute("purchasing"); }}><Icon name="sparkles" size={14} style={{ color: "var(--accent-text)" }} />Reorder AI</button>}
+            <button className="btn sm" onClick={() => setShowDataPanel(true)} title="Data & Storage"><Icon name="db" size={15} style={{ color: "var(--accent-text)" }} />{vp !== "mobile" && "Data"}</button>
+            {/* ── Bell notification button ── */}
+            <button onClick={() => setShowNotif(true)} title={"Notifications" + (unreadCount > 0 ? " · " + unreadCount + " unread" : "")}
+              style={{ position: "relative", background: "none", border: "none", padding: "6px 8px", cursor: "pointer", borderRadius: "var(--r)", color: unreadCount > 0 ? "var(--accent-text)" : "var(--ink-2)", display: "flex", alignItems: "center" }}>
+              <Icon name="bell" size={18} style={{ animation: unreadCount > 0 ? "notifPulse 2.4s ease infinite" : "none" }} />
+              {unreadCount > 0 && (
+                <span style={{
+                  position: "absolute", top: 3, right: 3, minWidth: 16, height: 16,
+                  background: unreadCount > 0 && notifs.some(n => n.severity === "out" && !readIds.has(n.id)) ? "var(--out)" : "var(--low)",
+                  color: "#fff", borderRadius: 10,
+                  fontSize: 10, fontWeight: 800,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  padding: "0 3px", lineHeight: 1, pointerEvents: "none",
+                }}>{unreadCount > 9 ? "9+" : unreadCount}</span>
+              )}
+            </button>
             <button onClick={() => pushToast("Signed in as Dana Reyes · Warehouse Manager", "accent")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }} title="Account">
               <Avatar name="Dana Reyes" size={32} />
             </button>
@@ -4299,10 +6413,11 @@ function App() {
             <div key={route}>
               {route === "dashboard" && <DashboardScreen rev={rev} pos={DATA.POS} onGoto={setRoute} onOpenProduct={setProduct} onReceive={setReceivePO} />}
               {route === "pos" && <POSScreen onComplete={completeSale} toast={pushToast} onPrint={setPrintDoc} />}
-              {route === "inventory" && <InventoryScreen rev={rev} layout={layout} setLayout={setLayout} onOpenProduct={setProduct} onNewPO={() => setCreatePO({ open: true, initial: null })} onAddToPO={openAddToPO} />}
+              {route === "inventory" && <InventoryScreen rev={rev} layout={layout} setLayout={setLayout} onOpenProduct={setProduct} onNewPO={() => setCreatePO({ open: true, initial: null })} onAddToPO={openAddToPO} onAddProduct={() => setProductForm({ product: null })} />}
               {route === "purchasing" && <PurchaseScreen rev={rev} pos={DATA.POS} onCreate={() => setCreatePO({ open: true, initial: null })} onReceive={setReceivePO} prefillFromSuggestion={prefillFromSuggestion} toast={pushToast} onPrint={setPrintDoc} />}
               {route === "receiving" && <ReceivingScreen pos={DATA.POS} onReceive={setReceivePO} onBatchReceive={setBatchPOs} />}
               {route === "suppliers" && <SuppliersScreen onCreatePO={(s) => setCreatePO({ open: true, initial: { supplier: s, lines: [] } })} />}
+              {route === "customers" && <CustomersScreen rev={rev} bump={bump} toast={pushToast} />}
               {route === "accounting" && <AccountingScreen rev={rev} onPrint={setPrintDoc} />}
               {route === "reports" && <ReportsScreen rev={rev} toast={pushToast} onPrint={setPrintDoc} />}
             </div>
@@ -4311,12 +6426,28 @@ function App() {
       </div>
 
       {/* drawers */}
-      <ProductDrawer product={product} onClose={() => setProduct(null)} onAddPO={openAddToPO} onAdjust={setAdjustProduct} />
+      <ProductDrawer product={product} onClose={() => setProduct(null)} onAddPO={openAddToPO} onAdjust={setAdjustProduct} onEdit={(p) => setProductForm({ product: p })} />
+      {productForm && <ProductFormDrawer product={productForm.product} onClose={() => setProductForm(null)} onSave={saveProduct} onDelete={deleteProduct} />}
       <StockAdjustDrawer product={adjustProduct} onClose={() => setAdjustProduct(null)} onConfirm={confirmAdjust} />
       <CreatePODrawer open={!!(createPO && createPO.open)} initial={createPO && createPO.initial} onClose={() => setCreatePO(null)} onSubmit={submitPO} toast={pushToast} />
       <ReceiveDrawer po={receivePO} onClose={() => setReceivePO(null)} onConfirm={confirmReceive} defaultWh="WH-ILIGAN" />
       <BatchReceiveDrawer pos={batchPOs} onClose={() => setBatchPOs(null)} onConfirm={confirmBatchReceive} />
       <PrintPreview doc={printDoc} onClose={() => setPrintDoc(null)} />
+      {showDataPanel && <DataPanel open={showDataPanel} onClose={() => setShowDataPanel(false)} onReload={() => { bump(); }} />}
+      {showNotif && (
+        <NotificationPanel
+          open={showNotif}
+          onClose={() => setShowNotif(false)}
+          notifs={notifs}
+          readIds={readIds}
+          unreadCount={unreadCount}
+          markRead={markRead}
+          markAllRead={markAllRead}
+          clearRead={clearRead}
+          onNavigate={(r) => { setRoute(r); }}
+          toast={pushToast}
+        />
+      )}
 
       <Toasts toasts={toasts} />
 
@@ -4332,6 +6463,8 @@ function App() {
   );
 }
 
+// Load persisted data before first render
+if (window.loadSavedData) { const ts = loadSavedData(); if (ts) console.info('[Everose] Restored saved data from', new Date(ts).toLocaleString()); }
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 
 </script>
