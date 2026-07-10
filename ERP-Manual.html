@@ -356,7 +356,7 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
   <div class="steps">
     <div class="step"><div class="step-n">1</div><div class="step-b"><div class="step-t">Login Screen on startup</div><div class="step-x">The login screen appears before any ERP screen. If a session is stored in <code>localStorage</code> key <code>everose_auth_v1</code>, the user is restored automatically and login is skipped.</div></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-b"><div class="step-t">Select account</div><div class="step-x">Four user cards are shown. Clicking a card sets the selected user and reveals the PIN numpad.</div></div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-b"><div class="step-t">Enter 4-digit PIN</div><div class="step-x">Auto-submits after the 4th digit. Wrong PIN triggers a CSS shake animation and clears the input. No lockout policy — retry is immediate.</div></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-b"><div class="step-t">Enter 4-digit PIN</div><div class="step-x">Digits can be entered on the on-screen numpad or a physical keyboard (0–9 types, Backspace deletes, Esc returns to account selection). Auto-submits after the 4th digit. Wrong PIN triggers a CSS shake animation and clears the input. No lockout policy — retry is immediate.</div></div></div>
     <div class="step"><div class="step-n">4</div><div class="step-b"><div class="step-t">Session stored</div><div class="step-x">On success, the user object is saved to <code>localStorage</code> so the session persists on page reload. A toast confirms: <em>"Signed in as [Name] · [Role]"</em>.</div></div></div>
   </div>
 
@@ -372,10 +372,16 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
   <h2>Sign Out</h2>
   <p>Click the <strong>✕ (sign out)</strong> button next to the user name in the sidebar footer. This clears <code>everose_auth_v1</code> from localStorage and returns to the Login Screen. Recommend signing out when leaving a shared device unattended.</p>
 
+  <h2>Idle Auto-Lock</h2>
+  <p>While a user is signed in, the app tracks pointer, keyboard, touch, and scroll-wheel activity. After <strong>10 minutes with no activity</strong>, the session is signed out automatically (same effect as clicking ✕) and a toast reports <em>"Signed out after 10 minutes of inactivity"</em>. The check runs every 30 seconds, so actual lock time is 10:00–10:30 after the last input. The timeout constant is <code>IDLE_LOCK_MS</code> in the <code>App</code> component.</p>
+
+  <h2>Last-Login Tracking</h2>
+  <p>Each successful login stamps the user's ID with the current time in localStorage key <code>everose_lastlogin_v1</code>. The Login Screen account cards display this as a relative label (e.g. <em>"Last login 3 hr ago"</em>). This is per-device information — it does not sync between browsers.</p>
+
   <div class="box warn"><div class="box-i">⚠️</div><div class="box-b"><div class="box-t">PIN Security Note</div><div class="box-x">PINs are stored in the <code>USERS</code> constant in the HTML source. For production deployments, move user credentials to a server-side authentication layer. The current PIN system is suitable for trusted-device, internal-use scenarios only.</div></div></div>
 
   <h2>Updating User PINs (Admin)</h2>
-  <p>To change a PIN or add/remove users: open the HTML file in a text editor, locate the <code>const USERS = [...]</code> array near line 6462, and update the <code>pin</code> field for the relevant user. Save the file. All devices using that file will pick up the change on the next page reload.</p>
+  <p>To change a PIN or add/remove users: open the HTML file in a text editor, locate the <code>const USERS = [...]</code> array near line 6477, and update the <code>pin</code> field for the relevant user. Save the file. All devices using that file will pick up the change on the next page reload.</p>
 </section>
 
 <!-- ══════════════ SECTION 2: DASHBOARD ══════════════ -->
@@ -413,7 +419,7 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
         <tr><td><strong>Transactions</strong></td><td>Count of unique sale IDs (SO-XXXX refs)</td><td>Filtered by selected period</td></tr>
         <tr><td><strong>Avg Order Value</strong></td><td>Revenue / transaction count</td><td>Filtered by selected period</td></tr>
         <tr><td><strong>Avg Daily Sales</strong></td><td>Revenue / number of days in period</td><td>Filtered by selected period</td></tr>
-        <tr><td><strong>14-Day Trend</strong></td><td>Daily revenue bar chart, last 14 days</td><td>Always last 14 days (period-independent)</td></tr>
+        <tr><td><strong>Period Trend</strong></td><td>Daily revenue bar chart (1 bar = Today, 7 = Week, up to 30 = Month/Quarter)</td><td>Adapts to selected period</td></tr>
         <tr><td><strong>Top 5 Products</strong></td><td>Ranked by revenue desc</td><td>Filtered by selected period</td></tr>
         <tr><td><strong>By Branch</strong></td><td>Revenue per warehouse ID</td><td>Filtered by selected period</td></tr>
         <tr><td><strong>Category Margins</strong></td><td>Revenue, GP, margin % per product category</td><td>Filtered by selected period</td></tr>
@@ -742,7 +748,7 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
       <thead><tr><th>Report Element</th><th>What it shows</th><th>Source</th></tr></thead>
       <tbody>
         <tr><td><strong>KPI Summary Tiles</strong></td><td>Units sold, total revenue, gross profit, margin %, transaction count, avg order value, avg daily</td><td>All sale movements</td></tr>
-        <tr><td><strong>30-Day Trend Chart</strong></td><td>Bar chart of daily revenue for last 30 days. Today highlighted.</td><td>Movements filtered by <code>days &lt;= 29</code></td></tr>
+        <tr><td><strong>Period Trend Chart</strong></td><td>Bar chart of daily revenue for the selected period (1 bar = Today, 7 = Week, up to 30 = Month/Quarter). Today highlighted.</td><td>Movements filtered by period threshold</td></tr>
         <tr><td><strong>Top 8 by Revenue</strong></td><td>Best-selling SKUs ranked by total revenue. Columns: Rank, Product, SKU, Units, Revenue.</td><td>Aggregated sale movements</td></tr>
         <tr><td><strong>Top 8 by Units</strong></td><td>Best-selling SKUs ranked by units sold.</td><td>Aggregated sale movements</td></tr>
         <tr><td><strong>Category Margin Table</strong></td><td>Per category: Units Sold · Revenue · Gross Profit · Margin % (color-coded)</td><td>Sale movements joined to product cost/category</td></tr>
@@ -1149,6 +1155,8 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
       <thead><tr><th>Key</th><th>Contains</th><th>Size estimate</th></tr></thead>
       <tbody>
         <tr><td><code>everose_erp_v1</code></td><td>All ERP data: products (incl. photos), customers, POs, movements, journal, credit companies</td><td>1–20 MB</td></tr>
+        <tr><td><code>everose_auth_v1</code></td><td>Logged-in user object (id, name, role, wh) — cleared on sign-out</td><td>&lt;1 KB</td></tr>
+        <tr><td><code>everose_lastlogin_v1</code></td><td>Map of user ID → last login timestamp (shown on Login Screen cards)</td><td>&lt;1 KB</td></tr>
         <tr><td><code>everose_notif_read</code></td><td>Array of read notification IDs</td><td>&lt;1 KB</td></tr>
         <tr><td><code>everose_notif_channels</code></td><td>Channel configurations: enabled state, phone/email/username per channel</td><td>&lt;1 KB</td></tr>
         <tr><td><code>everose_gs_url</code></td><td>Google Apps Script Web App URL</td><td>&lt;1 KB</td></tr>

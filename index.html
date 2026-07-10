@@ -1471,7 +1471,7 @@ function Sidebar({ route, setRoute, collapsed, alertCount, mobileOpen, setMobile
               <div style={{ fontSize: 11, color: "var(--ink-3)" }}>{currentUser.role}</div>
             </div>
           )}
-          {!collapsed && onLogout && (
+          {onLogout && (
             <button title="Sign out" onClick={onLogout}
               style={{ background: "none", border: "1px solid transparent", cursor: "pointer", color: "var(--ink-3)", display: "flex", alignItems: "center", padding: 5, borderRadius: 7, flex: "none", transition: "color .15s,border-color .15s" }}
               onMouseEnter={e => { e.currentTarget.style.color = "var(--low)"; e.currentTarget.style.borderColor = "var(--low)"; }}
@@ -4643,7 +4643,7 @@ function ReportsScreen({ rev, toast, onPrint }) {
   const [tab, setTab] = useStateRpt("sales");
 
   const data = useMemoRpt(() => {
-    const maxDays = { wtd: 7, mtd: 30, qtd: 90, ytd: 365 }[period] || 30;
+    const maxDays = { wtd: 6, mtd: 29, qtd: 89, ytd: 364 }[period] ?? 29;
 
     /* ── Sales aggregation ── */
     let unitsSold = 0, salesRevenue = 0, salesCost = 0;
@@ -4663,7 +4663,7 @@ function ReportsScreen({ rev, toast, onPrint }) {
     });
 
     /* trend: oldest → today */
-    const trendN = Math.min(maxDays, 30);
+    const trendN = Math.min(maxDays + 1, 30);
     const trend = Array.from({ length: trendN }, (_, i) => ({
       day: trendN - 1 - i, v: dailyRev[trendN - 1 - i] || 0, today: i === trendN - 1,
     }));
@@ -4673,7 +4673,7 @@ function ReportsScreen({ rev, toast, onPrint }) {
     DATA.MOVEMENTS.filter(m => m.type === "Sale" && Math.floor(m.days) <= maxDays && m.ref).forEach(m => saleRefs.add(m.ref));
     const txCount = saleRefs.size;
     const avgOrderValue = txCount > 0 ? salesRevenue / txCount : 0;
-    const avgDaily = trendN > 0 ? salesRevenue / trendN : 0;
+    const avgDaily = (maxDays + 1) > 0 ? salesRevenue / (maxDays + 1) : 0;
 
     const topProducts = Object.values(prodMap).sort((a, b) => b.rev - a.rev).slice(0, 8);
     const topByUnits  = Object.values(prodMap).sort((a, b) => b.units - a.units).slice(0, 8);
@@ -5178,24 +5178,27 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
   }, [rev, salesPeriod]);
 
   /* ── Per-location stats ── */
-  const byLoc = useMemoDash(() => DATA.WAREHOUSES.map((w) => {
-    let units = 0, value = 0, skus = 0, walerts = 0, ok = 0, sold = 0, soldRev = 0;
-    DATA.PRODUCTS.forEach((p) => {
-      const q = p.stock[w.id] || 0;
-      units += q; value += q * p.cost;
-      if (q > 0) skus++;
-      const st = statusFromTotal(q, p.reorder);
-      if (st === "out" || st === "low") walerts++;
-      if (st === "ok") ok++;
+  const byLoc = useMemoDash(() => {
+    const locMaxDays = { today: 0, wtd: 6, mtd: 29, qtd: 89 }[salesPeriod] ?? 29;
+    return DATA.WAREHOUSES.map((w) => {
+      let units = 0, value = 0, skus = 0, walerts = 0, ok = 0, sold = 0, soldRev = 0;
+      DATA.PRODUCTS.forEach((p) => {
+        const q = p.stock[w.id] || 0;
+        units += q; value += q * p.cost;
+        if (q > 0) skus++;
+        const st = statusFromTotal(q, p.reorder);
+        if (st === "out" || st === "low") walerts++;
+        if (st === "ok") ok++;
+      });
+      DATA.MOVEMENTS.forEach((m) => {
+        if (m.wh === w.id && m.type === "Sale" && Math.floor(m.days) <= locMaxDays) {
+          sold += Math.abs(m.qty);
+          const p = DATA.pid(m.sku); if (p) soldRev += Math.abs(m.qty) * p.price;
+        }
+      });
+      return { w, units, value, skus, walerts, sold, soldRev, healthPct: Math.round(ok / DATA.PRODUCTS.length * 100) };
     });
-    DATA.MOVEMENTS.forEach((m) => {
-      if (m.wh === w.id && m.type === "Sale") {
-        sold += Math.abs(m.qty);
-        const p = DATA.pid(m.sku); if (p) soldRev += Math.abs(m.qty) * p.price;
-      }
-    });
-    return { w, units, value, skus, walerts, sold, soldRev, healthPct: Math.round(ok / DATA.PRODUCTS.length * 100) };
-  }), [rev]);
+  }, [rev, salesPeriod]);
 
   const PERIOD_OPTS = [
     { value: "today", label: "Today" },
@@ -6487,25 +6490,59 @@ function LoginScreen({ onLogin }) {
   const [pin, setPin] = React.useState("");
   const [err, setErr] = React.useState("");
   const [shake, setShake] = React.useState(false);
+  const pinRef = React.useRef("");
+  const timerRef = React.useRef(null);
 
-  function pickUser(u) { setSelUser(u); setPin(""); setErr(""); }
+  function pickUser(u) { setSelUser(u); setPin(""); pinRef.current = ""; setErr(""); }
+
+  function goBack() {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    setSelUser(null); pinRef.current = ""; setPin(""); setErr("");
+  }
 
   function pressKey(k) {
-    if (k === "⌫") { setPin(p => p.slice(0, -1)); setErr(""); return; }
-    if (pin.length >= 4) return;
-    const np = pin + k;
-    setPin(np);
-    if (np.length === 4) {
-      setTimeout(() => {
+    if (k === "⌫") { pinRef.current = pinRef.current.slice(0, -1); setPin(pinRef.current); setErr(""); return; }
+    if (pinRef.current.length >= 4) return;
+    pinRef.current += k;
+    setPin(pinRef.current);
+    if (pinRef.current.length === 4) {
+      const np = pinRef.current;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
         if (selUser && np === selUser.pin) {
           onLogin(selUser);
         } else {
-          setShake(true); setErr("Incorrect PIN — try again"); setPin("");
+          setShake(true); setErr("Incorrect PIN — try again"); pinRef.current = ""; setPin("");
           setTimeout(() => setShake(false), 500);
         }
       }, 160);
     }
   }
+
+  /* Physical keyboard: digits type the PIN, Backspace deletes, Escape goes back */
+  React.useEffect(() => {
+    if (!selUser) return;
+    const fn = (e) => {
+      if (e.key >= "0" && e.key <= "9") { e.preventDefault(); pressKey(e.key); }
+      else if (e.key === "Backspace") { e.preventDefault(); pressKey("⌫"); }
+      else if (e.key === "Escape") { e.preventDefault(); goBack(); }
+    };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [selUser]);
+
+  /* Last-login timestamps recorded by handleLogin */
+  const lastLogins = React.useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('everose_lastlogin_v1') || '{}'); } catch { return {}; }
+  }, []);
+  const agoLabel = (ts) => {
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.floor(s / 60) + " min ago";
+    if (s < 86400) return Math.floor(s / 3600) + " hr ago";
+    return Math.floor(s / 86400) + " day" + (Math.floor(s / 86400) > 1 ? "s" : "") + " ago";
+  };
 
   const whLabel = (u) => {
     if (u.wh === "all") return "All branches";
@@ -6544,6 +6581,7 @@ function LoginScreen({ onLogin }) {
                   <div style={{ fontWeight: 700, fontSize: 13.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name}</div>
                   <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>{u.role}</div>
                   <div style={{ fontSize: 10.5, marginTop: 3, color: u.wh === "all" ? "var(--ok)" : "var(--accent-text)", fontWeight: 600 }}>{whLabel(u)}</div>
+                  {lastLogins[u.id] && <div style={{ fontSize: 10, marginTop: 2, color: "var(--ink-4)" }}>Last login {agoLabel(lastLogins[u.id])}</div>}
                 </div>
               </button>
             ))}
@@ -6553,7 +6591,7 @@ function LoginScreen({ onLogin }) {
         /* ── PIN pad ── */
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, width: "min(300px,90vw)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button onClick={() => setSelUser(null)} title="Back" style={{
+            <button onClick={goBack} title="Back (Esc)" style={{
               background: "none", border: "1px solid var(--line)", cursor: "pointer", color: "var(--ink-2)",
               width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
             }}>
@@ -6598,6 +6636,8 @@ function LoginScreen({ onLogin }) {
               )
             ))}
           </div>
+
+          <div style={{ fontSize: 10.5, color: "var(--ink-4)" }}>Tip: you can type your PIN on a keyboard · Esc to go back</div>
         </div>
       )}
 
@@ -6610,7 +6650,7 @@ function LoginScreen({ onLogin }) {
 
 const ROUTE_META = {
   dashboard: { title: "Operations dashboard", sub: "Live inventory & purchasing overview" },
-  pos: { title: "Point of Sale", sub: "Cashier · Ozamis City register" },
+  pos: { title: "Point of Sale", sub: "Cashier · Branch register" },
   inventory: { title: "Inventory", sub: "Stock levels across all locations" },
   purchasing: { title: "Purchase orders", sub: "Suggested reorders & open POs" },
   receiving: { title: "Receiving", sub: "Receive stock against purchase orders" },
@@ -6657,11 +6697,35 @@ function App() {
     setCurrentUser(user);
     setActiveBranch(user.wh === "all" ? "WH-ILIGAN" : user.wh);
     try { localStorage.setItem(AUTH_STORE_KEY, JSON.stringify(user)); } catch {}
+    try {
+      const m = JSON.parse(localStorage.getItem('everose_lastlogin_v1') || '{}');
+      m[user.id] = Date.now();
+      localStorage.setItem('everose_lastlogin_v1', JSON.stringify(m));
+    } catch {}
   }
   function handleLogout() {
     setCurrentUser(null);
+    setActiveBranch("WH-ILIGAN");
     try { localStorage.removeItem(AUTH_STORE_KEY); } catch {}
   }
+
+  /* Idle auto-lock — sign out after 10 minutes without pointer/keyboard activity */
+  const IDLE_LOCK_MS = 10 * 60 * 1000;
+  const lastActivityRef = React.useRef(0);
+  useE(() => {
+    if (!currentUser) return;
+    lastActivityRef.current = Date.now();
+    const mark = () => { lastActivityRef.current = Date.now(); };
+    const evs = ["pointerdown", "keydown", "touchstart", "wheel"];
+    evs.forEach(e => window.addEventListener(e, mark, { passive: true }));
+    const check = setInterval(() => {
+      if (Date.now() - lastActivityRef.current >= IDLE_LOCK_MS) {
+        handleLogout();
+        pushToast("Signed out after 10 minutes of inactivity", "watch");
+      }
+    }, 30000);
+    return () => { evs.forEach(e => window.removeEventListener(e, mark)); clearInterval(check); };
+  }, [currentUser]);
 
   // drawers
   const [product, setProduct] = useS(null);
@@ -6827,15 +6891,16 @@ function App() {
   }, [pushToast, bump]);
 
   const collapsed = vp === "tablet";
+
+  /* Show login screen if not authenticated */
+  if (!currentUser) return <><LoginScreen onLogin={handleLogin} /><Toasts toasts={toasts} /></>;
+
   const activeBranchObj = DATA.WAREHOUSES.find(w => w.id === activeBranch) || DATA.WAREHOUSES[0];
-  const isDirector = currentUser && currentUser.wh === "all";
+  const isDirector = currentUser.wh === "all";
 
   /* Dynamic POS sub-title */
   const posMeta = { title: "Point of Sale", sub: "Cashier · " + activeBranchObj.name };
   const meta = route === "pos" ? posMeta : (ROUTE_META[route] || ROUTE_META.dashboard);
-
-  /* Show login screen if not authenticated */
-  if (!currentUser) return <LoginScreen onLogin={handleLogin} />;
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -6907,7 +6972,7 @@ function App() {
         {/* content */}
         <main style={{ flex: 1, overflowY: "auto", padding: vp === "mobile" ? "16px 14px 40px" : "22px 26px 56px" }}>
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-            <div key={route}>
+            <div key={route + "|" + activeBranch}>
               {route === "dashboard" && <DashboardScreen rev={rev} pos={DATA.POS} onGoto={setRoute} onOpenProduct={setProduct} onReceive={setReceivePO} />}
               {route === "pos" && <POSScreen onComplete={completeSale} toast={pushToast} onPrint={setPrintDoc} wh={activeBranch} cashierName={currentUser.name} />}
               {route === "inventory" && <InventoryScreen rev={rev} layout={layout} setLayout={setLayout} onOpenProduct={setProduct} onNewPO={() => setCreatePO({ open: true, initial: null })} onAddToPO={openAddToPO} onAddProduct={() => setProductForm({ product: null })} />}
@@ -6927,7 +6992,7 @@ function App() {
       {productForm && <ProductFormDrawer product={productForm.product} onClose={() => setProductForm(null)} onSave={saveProduct} onDelete={deleteProduct} />}
       <StockAdjustDrawer product={adjustProduct} onClose={() => setAdjustProduct(null)} onConfirm={confirmAdjust} />
       <CreatePODrawer open={!!(createPO && createPO.open)} initial={createPO && createPO.initial} onClose={() => setCreatePO(null)} onSubmit={submitPO} toast={pushToast} />
-      <ReceiveDrawer po={receivePO} onClose={() => setReceivePO(null)} onConfirm={confirmReceive} defaultWh="WH-ILIGAN" />
+      <ReceiveDrawer po={receivePO} onClose={() => setReceivePO(null)} onConfirm={confirmReceive} defaultWh={activeBranch} />
       <BatchReceiveDrawer pos={batchPOs} onClose={() => setBatchPOs(null)} onConfirm={confirmBatchReceive} />
       <PrintPreview doc={printDoc} onClose={() => setPrintDoc(null)} />
       {showDataPanel && <DataPanel open={showDataPanel} onClose={() => setShowDataPanel(false)} onReload={() => { bump(); }} />}
