@@ -204,11 +204,10 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
   </svg>
 </template>
 
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" crossorigin="anonymous"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
 
 <!-- plain data (no babel) -->
@@ -223,74 +222,81 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
   ];
 
   const SUPPLIERS = [
-    { id: "SUP-001", name: "Frost & Field Appliances", code: "FROSTFLD", terms: "Net 30", lead: 7, contact: "orders@frostfield.com", rating: 4.6, onTime: 94 },
-    { id: "SUP-002", name: "Hearthwood Furniture Co.", code: "HEARTHWD", terms: "Net 45", lead: 14, contact: "sales@hearthwood.co", rating: 4.2, onTime: 88 },
-    { id: "SUP-003", name: "Volt Home Electronics", code: "VOLTHOME", terms: "Net 30", lead: 5, contact: "supply@volthome.com", rating: 4.8, onTime: 97 },
-    { id: "SUP-004", name: "Meridian Mattress Group", code: "MERIDIAN", terms: "Net 60", lead: 21, contact: "po@meridianmg.com", rating: 3.9, onTime: 79 },
-    { id: "SUP-005", name: "Cascade Kitchen Supply", code: "CASCADE", terms: "Net 30", lead: 10, contact: "wholesale@cascadeks.com", rating: 4.4, onTime: 91 },
-    { id: "SUP-006", name: "Atlas Outdoor & Patio", code: "ATLASOUT", terms: "Net 30", lead: 12, contact: "trade@atlasoutdoor.com", rating: 4.1, onTime: 85 },
+    { id: "SUP-AST",  name: "Astron Philippines",        code: "ASTRON",  terms: "Net 30", lead: 7,  contact: "orders@astron.ph",        rating: 4.5, onTime: 92 },
+    { id: "SUP-DBA",  name: "DB Audio",                  code: "DBAUDIO", terms: "Net 30", lead: 10, contact: "sales@dbaudio.ph",        rating: 4.4, onTime: 90 },
+    { id: "SUP-PST",  name: "Polar Star",               code: "POLARST", terms: "Net 30", lead: 7,  contact: "orders@polarstar.ph",     rating: 4.3, onTime: 89 },
+    { id: "SUP-FURN", name: "Everose Furniture Works",   code: "EVFURN",  terms: "Net 45", lead: 14, contact: "furniture@everose.ph",     rating: 4.2, onTime: 86 },
+    { id: "SUP-HERC", name: "Hercules Foam & Bedding",   code: "HERCFOAM",terms: "Net 30", lead: 10, contact: "orders@herculesfoam.ph",  rating: 4.1, onTime: 84 },
   ];
 
-  // category, brand, valuation method per line
+  // Real Everose product catalog transcribed from the store sales ledgers.
+  // Tuple: [sku, name, category, brand, supplierId, price(SRP), cost, reorder, valuation, serialized, startStock@main]
+  // NOTE: prices were read from handwritten ledgers — review & adjust in Inventory as needed.
   const P = [
-    // APPLIANCES — refrigeration
-    ["APP-REF-4801", "Arctic Pro 27\" French-Door Refrigerator", "Refrigeration", "FrostLine", "SUP-001", 2199, 1480, 6, "FIFO", true],
-    ["APP-REF-4802", "Arctic Compact 18\" Top-Freezer Fridge", "Refrigeration", "FrostLine", "SUP-001", 899, 560, 10, "FIFO", true],
-    ["APP-REF-4810", "Glacier Bottom-Freezer 24\" Counter-Depth", "Refrigeration", "Volt", "SUP-003", 1649, 1090, 6, "FIFO", true],
-    // APPLIANCES — laundry
-    ["APP-LDY-3301", "TurboWash 5.0 cu.ft. Front-Load Washer", "Laundry", "Volt", "SUP-003", 1099, 690, 8, "FIFO", true],
-    ["APP-LDY-3302", "TurboDry 7.4 cu.ft. Electric Dryer", "Laundry", "Volt", "SUP-003", 999, 620, 8, "FIFO", true],
-    ["APP-LDY-3310", "AquaJet Compact Stackable Washer", "Laundry", "FrostLine", "SUP-001", 749, 470, 6, "FIFO", true],
-    // APPLIANCES — kitchen
-    ["APP-KIT-2201", "ChefMaster 30\" 5-Burner Gas Range", "Cooking", "Cascade", "SUP-005", 1299, 820, 5, "FIFO", true],
-    ["APP-KIT-2202", "ChefMaster 24\" Built-In Dishwasher", "Cooking", "Cascade", "SUP-005", 749, 450, 8, "FIFO", true],
-    ["APP-KIT-2210", "Breeze Over-Range Microwave 1.9 cu.ft.", "Cooking", "Volt", "SUP-003", 379, 210, 12, "AVG", true],
-    ["APP-KIT-2215", "Cascade Pro Range Hood 36\" Stainless", "Cooking", "Cascade", "SUP-005", 549, 320, 6, "AVG", false],
-    // FURNITURE — living
-    ["FUR-SOF-7701", "Langley 3-Seat Fabric Sofa — Slate", "Living Room", "Hearthwood", "SUP-002", 1499, 880, 4, "AVG", false],
-    ["FUR-SOF-7702", "Langley Sectional w/ Chaise — Oatmeal", "Living Room", "Hearthwood", "SUP-002", 2299, 1390, 3, "AVG", false],
-    ["FUR-SOF-7710", "Camden Leather Recliner — Espresso", "Living Room", "Hearthwood", "SUP-002", 1099, 640, 5, "AVG", false],
-    ["FUR-TBL-6601", "Oakridge Extending Dining Table — Walnut", "Dining", "Hearthwood", "SUP-002", 899, 520, 5, "AVG", false],
-    ["FUR-CHR-6610", "Oakridge Dining Chair (Set of 2)", "Dining", "Hearthwood", "SUP-002", 329, 175, 12, "AVG", false],
-    // FURNITURE — bedroom / mattresses
-    ["FUR-BED-5501", "Sterling Queen Platform Bed — Charcoal", "Bedroom", "Meridian", "SUP-004", 749, 410, 5, "AVG", false],
-    ["FUR-BED-5502", "Sterling King Upholstered Bed — Linen", "Bedroom", "Meridian", "SUP-004", 1049, 590, 4, "AVG", false],
-    ["FUR-MAT-5520", "CloudRest Hybrid Queen Mattress", "Mattresses", "Meridian", "SUP-004", 999, 540, 8, "AVG", false],
-    ["FUR-MAT-5521", "CloudRest Memory-Foam King Mattress", "Mattresses", "Meridian", "SUP-004", 1199, 660, 6, "AVG", false],
-    ["FUR-DRS-5530", "Sterling 6-Drawer Dresser — Charcoal", "Bedroom", "Hearthwood", "SUP-002", 649, 360, 5, "AVG", false],
-    // OUTDOOR
-    ["FUR-OUT-8801", "Atlas 5-Piece Patio Dining Set", "Outdoor", "Atlas", "SUP-006", 1299, 740, 4, "AVG", false],
-    ["FUR-OUT-8810", "Atlas Cushioned Patio Sofa — Graphite", "Outdoor", "Atlas", "SUP-006", 899, 510, 4, "AVG", false],
-    ["APP-OUT-8820", "Atlas 4-Burner Propane Grill w/ Side", "Outdoor", "Atlas", "SUP-006", 599, 340, 6, "AVG", true],
-    ["APP-SML-1101", "Breeze Countertop Air Fryer 6qt", "Small Appliances", "Volt", "SUP-003", 129, 62, 20, "AVG", false],
+    // ── ASTRON appliances ──
+    ["AST-RC-1018",   "Astron SEC-1018 1.8L Rice Cooker w/ Steamer",              "Cooking",      "Astron", "SUP-AST",  1498,  1070, 3, "FIFO", true,  8],
+    ["AST-BL-158",    "Astron BL-158 Blender 250W",                              "Kitchen",      "Astron", "SUP-AST",   987,   705, 3, "AVG",  false, 8],
+    ["AST-EO-65",     "Astron EO-65 Electric Oven 65L",                          "Cooking",      "Astron", "SUP-AST",  6990,  4850, 2, "FIFO", true,  5],
+    ["AST-CS-99",     "Astron CS-99 Double Burner Gas Stove",                    "Cooking",      "Astron", "SUP-AST",  1880,  1040, 3, "AVG",  false, 6],
+    ["AST-AF-5016",   "Astron AF-5016SL Digital Air Fryer",                      "Kitchen",      "Astron", "SUP-AST",  3540,  2540, 3, "FIFO", true,  6],
+    ["AST-TV-4350",   "Astron FN-4350 43\" LED TV",                              "TV & Audio",   "Astron", "SUP-AST", 17612, 12580, 2, "FIFO", true,  4],
+    ["AST-TV-6550",   "Astron FN-6550 55\" LED TV",                              "TV & Audio",   "Astron", "SUP-AST", 23894, 17070, 2, "FIFO", true,  3],
+    ["AST-FAN-26",    "Astron Gigamax 26\" Stand Fan",                           "Cooling",      "Astron", "SUP-AST",  2212,  1580, 4, "AVG",  false, 10],
+    ["AST-SP-7588",   "Astron SP-7588 7.5kg Spin Dryer",                         "Laundry",      "Astron", "SUP-AST",  3689,  2635, 2, "FIFO", true,  5],
+    ["AST-TT-7585",   "Astron SDT-7585 Twin-Tub Washing Machine",                "Laundry",      "Astron", "SUP-AST",  7820,  5580, 2, "FIFO", true,  4],
+    ["AST-ST-8584",   "Astron ST-8584 Single-Tub Washing Machine",              "Laundry",      "Astron", "SUP-AST",  5173,  3695, 2, "FIFO", true,  5],
+    ["AST-AC-SPV100", "Astron TCL-SPV100 1HP Inverter Split-Type Aircon w/ Remote","Cooling",   "Astron", "SUP-AST", 21574, 15410, 2, "FIFO", true,  3],
+    ["AST-AC-160RS",  "Astron TCL-160RS 1HP Window-Type Aircon w/ Remote",       "Cooling",      "Astron", "SUP-AST", 15210, 10870, 2, "FIFO", true,  4],
+    ["AST-AC-100RS",  "Astron TCL-100RS 1HP Window-Type Aircon w/ Remote",       "Cooling",      "Astron", "SUP-AST", 11150,  7960, 2, "FIFO", true,  4],
+    ["AST-AC-RE60",   "Astron TCL-RE60 0.6HP Window-Type Aircon w/ Remote",      "Cooling",      "Astron", "SUP-AST", 10458,  7470, 2, "FIFO", true,  4],
+    // ── DB AUDIO sound systems ──
+    ["DBA-SW-215",    "DB Audio Skywalker 15\" MCP-215 Speaker",                 "TV & Audio",   "DB Audio", "SUP-DBA",  9660,  6900, 2, "FIFO", true,  4],
+    ["DBA-PB-210",    "DB Audio Party Box-210 PA w/ 2 Mic",                      "TV & Audio",   "DB Audio", "SUP-DBA", 11200,  8000, 2, "FIFO", true,  3],
+    ["DBA-KB-8585",   "DB Audio Kumabeats 8585 PA Speaker",                      "TV & Audio",   "DB Audio", "SUP-DBA",  4169,  2935, 2, "FIFO", true,  5],
+    ["DBA-SET-802",   "DB Audio SET-802 Amplifier w/ Speakers",                  "TV & Audio",   "DB Audio", "SUP-DBA",  8400,  6000, 2, "FIFO", true,  3],
+    // ── POLAR STAR water dispensers ──
+    ["PST-WD-HC",     "Polar Star Hot & Cold Water Dispenser",                   "Kitchen",      "Polar Star", "SUP-PST", 9110, 6495, 3, "FIFO", true,  8],
+    // ── FURNITURE — sala sets ──
+    ["FUR-SALA-REGINE",   "Regine Sala Set",                    "Living Room", "Everose", "SUP-FURN", 24500, 17500, 1, "AVG", false, 3],
+    ["FUR-SALA-CORNERVS", "Corner VS Sala Set",                 "Living Room", "Everose", "SUP-FURN", 28000, 20000, 1, "AVG", false, 2],
+    ["FUR-SALA-DOMENCH",  "Domench Sala Set",                   "Living Room", "Everose", "SUP-FURN", 87380, 62000, 1, "AVG", false, 1],
+    ["FUR-SALA-LAVANDER", "Lavander Sala Set",                  "Living Room", "Everose", "SUP-FURN", 24500, 17500, 1, "AVG", false, 2],
+    ["FUR-SALA-RIHANNA",  "Rihanna Sala Set",                   "Living Room", "Everose", "SUP-FURN", 10500,  7500, 1, "AVG", false, 3],
+    ["FUR-SALA-DANE",     "Dane Sala Set",                      "Living Room", "Everose", "SUP-FURN", 42000, 30000, 1, "AVG", false, 1],
+    ["FUR-SALA-GUAVANA",  "Guavana Sala Set",                   "Living Room", "Everose", "SUP-FURN", 28000, 20000, 1, "AVG", false, 2],
+    ["FUR-SALA-BOMERACH", "Bomerach Sala Set",                  "Living Room", "Everose", "SUP-FURN", 37380, 26700, 1, "AVG", false, 1],
+    ["FUR-SALA-OLYMPUS",  "Olympus Sala Set",                   "Living Room", "Everose", "SUP-FURN", 27720, 19800, 1, "AVG", false, 2],
+    ["FUR-SALA-NOAH",     "Noah Sala Set",                      "Living Room", "Everose", "SUP-FURN", 20720, 14800, 1, "AVG", false, 2],
+    // ── FURNITURE — dining & storage ──
+    ["FUR-DT-GSOVAL",     "GS Oval Glass-Top Dining Table",     "Dining",      "Everose", "SUP-FURN", 51380, 36700, 1, "AVG", false, 2],
+    ["FUR-DT-DARKWOOD",   "DT-65 Dark-Top Solid Wood Dining Table","Dining",   "Everose", "SUP-FURN", 44240, 31600, 1, "AVG", false, 2],
+    ["FUR-CAB-CHINA-S",   "China Cabinet (Small)",              "Dining",      "Everose", "SUP-FURN", 24500, 14500, 1, "AVG", false, 2],
+    ["FUR-DIV-CRISTAND42","Cristand 42\" Room Divider",         "Living Room", "Everose", "SUP-FURN", 19600, 14000, 1, "AVG", false, 2],
+    ["FUR-APARADOR-L",    "Aparador (Large)",                   "Bedroom",     "Everose", "SUP-FURN", 21000, 15000, 1, "AVG", false, 2],
+    ["FUR-APARADOR-S",    "Aparador (Small)",                   "Bedroom",     "Everose", "SUP-FURN", 14560, 10400, 1, "AVG", false, 3],
+    // ── FURNITURE — beds & foam (Hercules) ──
+    ["FUR-BED-LOVENEST-Q","Lovenest Bed 60x75 (Queen)",         "Bedroom",     "Hercules", "SUP-HERC", 16009, 11435, 1, "AVG", false, 2],
+    ["FUR-BED-LOVENEST-F","Lovenest Bed 54x75 (Full)",          "Bedroom",     "Hercules", "SUP-HERC", 15029, 10735, 1, "AVG", false, 2],
+    ["FUR-BED-ANASTACIA", "Anastacia Bed w/ 3ft Headboard",     "Bedroom",     "Everose",  "SUP-FURN", 33600, 24000, 1, "AVG", false, 1],
+    ["FUR-FOAM-4x42",     "Deuform Foam 4\"x42\"x75\"",         "Mattresses",  "Hercules", "SUP-HERC",  3581,  2558, 3, "AVG", false, 8],
+    ["FUR-FOAM-4x46",     "Deuform Foam 4\"x46\"x75\"",         "Mattresses",  "Hercules", "SUP-HERC",  6608,  4720, 3, "AVG", false, 6],
+    ["FUR-FOAM-8x42",     "Deuform Foam 8\"x42\"x75\" (Queen)", "Mattresses",  "Hercules", "SUP-HERC", 14417, 10248, 2, "AVG", false, 4],
+    ["FUR-FOAM-4x54",     "Deuform Foam 4\"x54\"x75\"",         "Mattresses",  "Hercules", "SUP-HERC",  3528,  2521, 3, "AVG", false, 6],
+    ["FUR-FOAM-DBL",      "Deuform Foam Double",                "Mattresses",  "Hercules", "SUP-HERC",  5222,  3730, 3, "AVG", false, 5],
+    ["FUR-FOAM-LG",       "Deuform Foam Large",                 "Mattresses",  "Hercules", "SUP-HERC",  7644,  5460, 2, "AVG", false, 4],
   ];
 
-  // deterministic-ish pseudo random for stable stock numbers
-  function seed(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0); }
-  function rng(s) { let x = s || 123456789; return () => { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; return ((x >>> 0) % 1000) / 1000; }; }
-
-  const PRODUCTS = P.map((row, idx) => {
-    const [sku, name, category, brand, supplierId, price, cost, reorder, valuation, serialized] = row;
-    const r = rng(seed(sku));
-    // distribute stock across warehouses; some intentionally low/out for alert states
+  const PRODUCTS = P.map((row) => {
+    const [sku, name, category, brand, supplierId, price, cost, reorder, valuation, serialized, startStock] = row;
+    // Fresh inventory: starting stock at the main warehouse (Iligan), zero at the stores.
     const stock = {};
-    let total = 0;
-    WAREHOUSES.forEach((w, wi) => {
-      let q;
-      const roll = r();
-      if (idx % 7 === 0 && wi === 0) q = 0;                 // some OOS at main
-      else if (idx % 5 === 0) q = Math.floor(r() * Math.max(2, reorder - 1)); // some low
-      else q = Math.floor(roll * reorder * 2.4) + (wi === 0 ? reorder : 0);
-      stock[w.id] = q; total += q;
-    });
-    const reorderTotal = reorder; // per-location threshold reference
-    const onOrder = (idx % 4 === 0) ? Math.ceil(reorder * 1.5) : (idx % 6 === 0 ? reorder : 0);
+    WAREHOUSES.forEach((w, wi) => { stock[w.id] = wi === 0 ? (startStock || 0) : 0; });
+    const total = startStock || 0;
     return {
       sku, name, category, brand, supplierId, price, cost, reorder, valuation, serialized,
-      stock, total, onOrder, reorderTotal,
-      margin: Math.round(((price - cost) / price) * 100),
-      // 8-week movement sparkline (units sold)
-      trend: Array.from({ length: 8 }, () => Math.floor(r() * Math.max(3, reorder))),
+      stock, total, onOrder: 0, reorderTotal: reorder,
+      margin: price > 0 ? Math.round(((price - cost) / price) * 100) : 0,
+      trend: Array.from({ length: 8 }, () => 0),
     };
   });
 
@@ -304,56 +310,11 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
     return "ok";
   }
 
-  // Recent stock movements (ledger)
-  const MOVE_TYPES = ["Sale", "Sale", "Sale", "Receipt", "Transfer", "Adjustment", "Return"];
+  // Stock movements ledger — starts empty (no demo sales history).
   const MOVEMENTS = [];
-  let mid = 4820;
-  PRODUCTS.forEach((p) => {
-    const r = rng(seed(p.sku + "mv"));
-    const n = 3 + Math.floor(r() * 4);
-    for (let i = 0; i < n; i++) {
-      const t = MOVE_TYPES[Math.floor(r() * MOVE_TYPES.length)];
-      const qty = (t === "Sale" ? -1 : 1) * (1 + Math.floor(r() * 3));
-      const w = WAREHOUSES[Math.floor(r() * WAREHOUSES.length)];
-      MOVEMENTS.push({
-        id: "MV-" + (mid++),
-        sku: p.sku, type: t, qty, wh: w.id,
-        ref: t === "Sale" ? "SO-" + (10000 + Math.floor(r() * 8000)) : t === "Receipt" ? "PO-" + (2400 + Math.floor(r() * 90)) : "ADJ-" + (700 + Math.floor(r() * 200)),
-        days: Math.floor(r() * 21),
-      });
-    }
-  });
-  MOVEMENTS.sort((a, b) => a.days - b.days);
 
-  // Purchase Orders
-  const POS = [
-    { id: "PO-2481", supplierId: "SUP-003", status: "Open", created: 2, eta: 3, lines: [
-      { sku: "APP-LDY-3301", qty: 8, recv: 0, cost: 690 },
-      { sku: "APP-LDY-3302", qty: 8, recv: 0, cost: 620 },
-      { sku: "APP-KIT-2210", qty: 12, recv: 0, cost: 210 },
-    ] },
-    { id: "PO-2479", supplierId: "SUP-002", status: "Partial", created: 9, eta: 1, lines: [
-      { sku: "FUR-SOF-7701", qty: 6, recv: 4, cost: 880 },
-      { sku: "FUR-SOF-7702", qty: 4, recv: 2, cost: 1390 },
-      { sku: "FUR-CHR-6610", qty: 16, recv: 16, cost: 175 },
-    ] },
-    { id: "PO-2476", supplierId: "SUP-001", status: "Open", created: 4, eta: 5, lines: [
-      { sku: "APP-REF-4801", qty: 6, recv: 0, cost: 1480 },
-      { sku: "APP-REF-4802", qty: 10, recv: 0, cost: 560 },
-    ] },
-    { id: "PO-2470", supplierId: "SUP-004", status: "Received", created: 24, eta: -3, lines: [
-      { sku: "FUR-MAT-5520", qty: 10, recv: 10, cost: 540 },
-      { sku: "FUR-BED-5501", qty: 6, recv: 6, cost: 410 },
-    ] },
-    { id: "PO-2468", supplierId: "SUP-005", status: "Partial", created: 12, eta: -1, lines: [
-      { sku: "APP-KIT-2201", qty: 5, recv: 3, cost: 820 },
-      { sku: "APP-KIT-2202", qty: 8, recv: 8, cost: 450 },
-      { sku: "APP-KIT-2215", qty: 6, recv: 0, cost: 320 },
-    ] },
-    { id: "PO-2462", supplierId: "SUP-006", status: "Draft", created: 0, eta: 12, lines: [
-      { sku: "FUR-OUT-8801", qty: 4, recv: 0, cost: 740 },
-    ] },
-  ];
+  // Purchase Orders — starts empty (no demo POs).
+  const POS = [];
 
   window.DATA = { WAREHOUSES, SUPPLIERS, PRODUCTS, MOVEMENTS, POS, pid, statusOf };
 })();
@@ -368,13 +329,6 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
 
   const CUSTOMERS = [
     { id: "C-1001", name: "Walk-in Customer", phone: "—", email: "—", type: "Walk-in", creditLimit: 0, balance: 0, terms: "—" },
-    { id: "C-1002", name: "Jordan Alvarez", phone: "(415) 555-0182", email: "jordan.alvarez@mail.com", type: "Account", creditLimit: 6000, balance: 2340, terms: "Net 30" },
-    { id: "C-1003", name: "Priya Nair", phone: "(415) 555-0144", email: "priya.nair@mail.com", type: "Account", creditLimit: 10000, balance: 0, terms: "Net 30" },
-    { id: "C-1004", name: "Marcus Bell", phone: "(628) 555-0199", email: "m.bell@mail.com", type: "Account", creditLimit: 4000, balance: 3890, terms: "Installments" },
-    { id: "C-1005", name: "Sofia Ramos", phone: "(510) 555-0121", email: "sofia.r@mail.com", type: "Account", creditLimit: 8000, balance: 1180, terms: "Net 45" },
-    { id: "C-1006", name: "Daniel Okafor", phone: "(415) 555-0167", email: "d.okafor@mail.com", type: "Account", creditLimit: 5000, balance: 0, terms: "Net 30" },
-    { id: "C-1007", name: "Emily Chen", phone: "(669) 555-0103", email: "emily.chen@mail.com", type: "Account", creditLimit: 12000, balance: 6420, terms: "Installments" },
-    { id: "C-1008", name: "Liam Patterson", phone: "(415) 555-0190", email: "liam.p@mail.com", type: "Account", creditLimit: 3000, balance: 0, terms: "Net 30" },
   ];
 
   const TENDERS = [
@@ -403,6 +357,7 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
     { code: "1010", name: "Bank Account", type: "Asset" },
     { code: "1100", name: "Accounts Receivable", type: "Asset" },
     { code: "1200", name: "Inventory", type: "Asset" },
+    { code: "1300", name: "Creditable Withholding Tax", type: "Asset" },
     { code: "2000", name: "Accounts Payable", type: "Liability" },
     { code: "2100", name: "Sales Tax Payable", type: "Liability" },
     { code: "2200", name: "Customer Deposits", type: "Liability" },
@@ -424,47 +379,8 @@ input:focus-visible, button:focus-visible, [tabindex]:focus-visible {
   }
   const L = (account, debit, credit) => ({ account, debit: debit || 0, credit: credit || 0 });
 
-  const JOURNAL = [
-    J(120, "Opening capital balances", "OPEN-001", "Opening", [
-      L("1000", 38000), L("1010", 142000), L("1200", 360000), L("3000", 0, 540000),
-    ]),
-    J(28, "Cash sale — washer + dryer bundle", "SO-10241", "Sale", [
-      L("1000", 2266), L("4000", 0, 2098), L("2100", 0, 168), L("5000", 1310), L("1200", 0, 1310),
-    ]),
-    J(24, "Credit sale — French-door refrigerator", "SO-10255", "Sale", [
-      L("1100", 2375), L("4000", 0, 2199), L("2100", 0, 176), L("5000", 1480), L("1200", 0, 1480),
-    ]),
-    J(21, "PO-2470 received — mattresses & beds", "PO-2470", "Receipt", [
-      L("1200", 7860), L("2000", 0, 7860),
-    ]),
-    J(18, "Supplier payment — Meridian Mattress", "PAY-3301", "Payment", [
-      L("2000", 7860), L("1010", 0, 7860),
-    ]),
-    J(15, "Card sale — sectional sofa", "SO-10288", "Sale", [
-      L("1010", 2483), L("4000", 0, 2299), L("2100", 0, 184), L("5000", 1390), L("1200", 0, 1390),
-    ]),
-    J(14, "Customer payment received — Alvarez", "RCT-4410", "Payment", [
-      L("1000", 1500), L("1100", 0, 1500),
-    ]),
-    J(11, "Installation service — dishwasher fitting", "SVC-220", "Sale", [
-      L("1000", 180), L("4100", 0, 167), L("2100", 0, 13),
-    ]),
-    J(9, "Monthly store rent", "EXP-901", "Expense", [
-      L("6000", 6800), L("1010", 0, 6800),
-    ]),
-    J(7, "Payroll — sales & warehouse", "EXP-915", "Expense", [
-      L("6100", 14200), L("1010", 0, 14200),
-    ]),
-    J(5, "Cash sale — patio dining set", "SO-10322", "Sale", [
-      L("1000", 1403), L("4000", 0, 1299), L("2100", 0, 104), L("5000", 740), L("1200", 0, 740),
-    ]),
-    J(3, "Inventory write-off — damaged range hood", "ADJ-118", "Adjustment", [
-      L("5100", 320), L("1200", 0, 320),
-    ]),
-    J(2, "In-house credit sale — king bed + mattress", "SO-10350", "Sale", [
-      L("1100", 2430), L("4000", 0, 2248), L("2100", 0, 182), L("5000", 1250), L("1200", 0, 1250),
-    ]),
-  ];
+  // Journal starts empty — no demo transactions. Post your opening balances from Accounting.
+  const JOURNAL = [];
 
   // balance one entry's residual into equity if needed (keep opening balanced)
   // (opening above: 38000+142000+360000 = 540000 = credit 540000 ✓)
@@ -1458,6 +1374,13 @@ function Sidebar({ route, setRoute, collapsed, alertCount, mobileOpen, setMobile
       <nav style={{ flex: 1, overflowY: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 2 }}>
         {!collapsed && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".08em", color: "var(--ink-4)", padding: "10px 12px 5px" }}>OPERATIONS</div>}
         {NAV.map((n) => item(n, false))}
+        {currentUser && currentUser.wh === "all" && (
+          <React.Fragment>
+            {!collapsed && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".08em", color: "var(--ink-4)", padding: "14px 12px 5px" }}>ADMINISTRATION</div>}
+            {collapsed && <div className="hr" style={{ margin: "8px 6px" }} />}
+            {item({ id: "settings", label: "Users & Settings", icon: "sliders" }, false)}
+          </React.Fragment>
+        )}
         {!collapsed && NAV_DISABLED.length > 0 && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".08em", color: "var(--ink-4)", padding: "14px 12px 5px" }}>OTHER MODULES</div>}
         {collapsed && NAV_DISABLED.length > 0 && <div className="hr" style={{ margin: "8px 6px" }} />}
         {NAV_DISABLED.map((n) => item(n, true))}
@@ -1472,7 +1395,7 @@ function Sidebar({ route, setRoute, collapsed, alertCount, mobileOpen, setMobile
             </div>
           )}
           {onLogout && (
-            <button title="Sign out" onClick={onLogout}
+            <button title="Sign out" aria-label="Sign out" onClick={onLogout}
               style={{ background: "none", border: "1px solid transparent", cursor: "pointer", color: "var(--ink-3)", display: "flex", alignItems: "center", padding: 5, borderRadius: 7, flex: "none", transition: "color .15s,border-color .15s" }}
               onMouseEnter={e => { e.currentTarget.style.color = "var(--low)"; e.currentTarget.style.borderColor = "var(--low)"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "var(--ink-3)"; e.currentTarget.style.borderColor = "transparent"; }}>
@@ -2267,7 +2190,7 @@ Object.assign(window, { BarcodeScanner, downloadCSV });
    Exports to window: InventoryScreen */
 const { useState: useStateI, useMemo: useMemoI } = React;
 
-const CATEGORIES = ["All", "Refrigeration", "Laundry", "Cooking", "Living Room", "Dining", "Bedroom", "Mattresses", "Outdoor", "Small Appliances"];
+const CATEGORIES = ["All", "TV & Audio", "Cooling", "Cooking", "Kitchen", "Laundry", "Living Room", "Dining", "Bedroom", "Mattresses", "Refrigeration", "Outdoor", "Small Appliances"];
 const STATUS_FILTERS = [
   { value: "all", label: "All" },
   { value: "alert", label: "Needs attention" },
@@ -2852,7 +2775,7 @@ Object.assign(window, { ProductDrawer });
    Exports: ProductFormDrawer */
 const { useState: useStatePF, useEffect: useEffectPF, useRef: useRefPF } = React;
 
-const ALL_CATEGORIES = ["Refrigeration", "Laundry", "Cooking", "Living Room", "Dining", "Bedroom", "Mattresses", "Outdoor", "Small Appliances"];
+const ALL_CATEGORIES = ["TV & Audio", "Cooling", "Cooking", "Kitchen", "Laundry", "Living Room", "Dining", "Bedroom", "Mattresses", "Refrigeration", "Outdoor", "Small Appliances"];
 
 function FieldLabel({ children }) {
   return (
@@ -3974,8 +3897,21 @@ Object.assign(window, { ReceivingScreen, ReceiveDrawer, BatchReceiveDrawer });
    Exports: POSScreen */
 const { useState: useStatePOS, useMemo: useMemoPOS, useRef: useRefPOS } = React;
 
-const TAX_RATE = 0.08;
+const TAX_RATE = 0; // EVEROS Appliance Center is NON-VAT registered — no VAT added to sales
 const POS_WH = "WH-OZAMIS";
+
+/* Invoice numbering — editable per sale, auto-increments from the last used number.
+   Default seed matches the store's BIR booklet serial style (6-digit). */
+const INVOICE_SEQ_KEY = 'everose_invoice_seq';
+const padInv = (n) => String(n).padStart(6, "0");
+function peekInvoiceNo() {
+  try { const n = parseInt(localStorage.getItem(INVOICE_SEQ_KEY) || "1442", 10); return padInv((isNaN(n) ? 1442 : n) + 1); }
+  catch { return padInv(1443); }
+}
+function commitInvoiceNo(str) {
+  const n = parseInt(String(str).replace(/\D/g, ""), 10);
+  if (!isNaN(n)) { try { localStorage.setItem(INVOICE_SEQ_KEY, String(n)); } catch {} }
+}
 
 function POSScreen({ onComplete, toast, onPrint, wh: branchWh, cashierName }) {
   const posWh = branchWh || POS_WH;
@@ -3987,13 +3923,16 @@ function POSScreen({ onComplete, toast, onPrint, wh: branchWh, cashierName }) {
   const [payments, setPayments] = useStatePOS([]);
   const [receipt, setReceipt] = useStatePOS(null);
   const [showScanner, setShowScanner] = useStatePOS(false);
+  const [invoiceNo, setInvoiceNo] = useStatePOS(peekInvoiceNo);
+  const [withholdingAmt, setWithholdingAmt] = useStatePOS(0);
 
   const popular = useMemoPOS(() => DATA.PRODUCTS.filter((p) => p.total > 0).slice(0, 8), []);
   const subtotal = cart.reduce((s, l) => s + l.price * l.qty + (l.install ? 79 : 0), 0);
   const discount = Math.round(subtotal * (discountPct / 100));
   const taxable = subtotal - discount;
   const tax = Math.round(taxable * TAX_RATE);
-  const total = taxable + tax;
+  const withholding = Math.min(taxable, Math.max(0, Math.round(withholdingAmt) || 0));
+  const total = taxable - withholding;
   const paid = payments.reduce((s, p) => s + p.amount, 0);
   const remaining = Math.max(0, total - paid);
   const cashPaid = payments.filter((p) => p.tender === "cash").reduce((s, p) => s + p.amount, 0);
@@ -4015,11 +3954,14 @@ function POSScreen({ onComplete, toast, onPrint, wh: branchWh, cashierName }) {
     setPayments((p) => [...p, { tender: t.id, label: t.label, amount: amt || 0 }]);
   }
   function setTenderAmt(i, v) { setPayments((p) => p.map((x, j) => j === i ? { ...x, amount: Math.max(0, v) } : x)); }
-  function clearSale() { setCart([]); setPayments([]); setDiscountPct(0); setCustomer(DATA.CUSTOMERS[0]); setCustQuery(""); setReceipt(null); }
+  function clearSale() { setCart([]); setPayments([]); setDiscountPct(0); setWithholdingAmt(0); setInvoiceNo(peekInvoiceNo()); setCustomer(DATA.CUSTOMERS[0]); setCustQuery(""); setReceipt(null); }
 
   function charge() {
     const saleId = "SO-" + Math.floor(Math.random() * 9000 + 10500);
-    const data = { saleId, cart: [...cart], customer, subtotal, discount, tax, total, payments: [...payments], change, units, wh: posWh, cashier: cashierName || "Cashier" };
+    const isCharge = payments.some(p => /credit|financ|charge|account|install/i.test(p.label || "")) || (customer && customer.type === "Account");
+    const invNo = (invoiceNo || "").trim() || peekInvoiceNo();
+    const data = { saleId, invoiceNo: invNo, date: Date.now(), cart: [...cart], customer, subtotal, discount, tax, withholding, total, payments: [...payments], change, units, wh: posWh, cashier: cashierName || "Cashier", saleType: isCharge ? "charge" : "cash" };
+    commitInvoiceNo(invNo);
     onComplete(data);
     setReceipt(data);
   }
@@ -4149,7 +4091,15 @@ function POSScreen({ onComplete, toast, onPrint, wh: branchWh, cashierName }) {
 
         {/* totals */}
         <div className="card" style={{ padding: 14 }}>
-          {[["Subtotal", money(subtotal)], ["Discount", discount ? "−" + money(discount) : "₱0"], ["Tax (8%)", money(tax)]].map(([l, v]) => (
+          {/* Invoice No. — editable, matches BIR booklet serial */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 8, marginBottom: 6, borderBottom: "1px solid var(--line-soft)" }}>
+            <span style={{ fontSize: 12, color: "var(--ink-3)", whiteSpace: "nowrap" }}>Invoice No.</span>
+            <input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="000000"
+              title="Invoice number — edit to match your BIR booklet serial"
+              className="mono tnum"
+              style={{ marginLeft: "auto", width: 120, height: 30, textAlign: "right", padding: "0 9px", borderRadius: 7, fontSize: 13, fontWeight: 700, border: "1px solid var(--line)", background: "var(--bg)", color: "var(--ink)", outline: "none" }} />
+          </div>
+          {[["Total Sales", money(subtotal)], ["Less: Discount", discount ? "−" + money(discount) : "₱0"]].map(([l, v]) => (
             <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 13, color: "var(--ink-2)" }}>
               <span>{l}</span><span className="mono tnum">{v}</span>
             </div>
@@ -4163,9 +4113,25 @@ function POSScreen({ onComplete, toast, onPrint, wh: branchWh, cashierName }) {
               ))}
             </div>
           </div>
+          {/* Withholding tax — editable peso amount (BIR Form 2307) */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 2px" }}>
+            <span style={{ fontSize: 12, color: "var(--ink-3)", whiteSpace: "nowrap" }}>Less: Withholding Tax</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
+              <span style={{ fontSize: 12, color: "var(--ink-3)" }}>₱</span>
+              <input type="number" min="0" value={withholdingAmt || ""} onChange={(e) => setWithholdingAmt(Math.max(0, parseInt(e.target.value) || 0))} placeholder="0"
+                title="Creditable withholding tax withheld by the customer (BIR Form 2307)"
+                className="mono tnum"
+                style={{ width: 96, height: 30, textAlign: "right", padding: "0 9px", borderRadius: 7, fontSize: 13, border: "1px solid var(--line)", background: "var(--bg)", color: "var(--ink)", outline: "none" }} />
+            </div>
+          </div>
+          {withholding > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", fontSize: 12.5, color: "var(--ink-3)" }}>
+              <span>Withholding</span><span className="mono tnum">−{money(withholding)}</span>
+            </div>
+          )}
           <div className="hr" style={{ margin: "8px 0" }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <span style={{ fontSize: 14, fontWeight: 700 }}>Total</span>
+            <span style={{ fontSize: 14, fontWeight: 700 }}>Total Amount Due</span>
             <span className="mono tnum" style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.01em" }}>{money(total)}</span>
           </div>
         </div>
@@ -4235,10 +4201,10 @@ function Receipt({ data, onNew, toast, onPrint }) {
             </div>
           ))}
           <div className="hr" style={{ margin: "10px 0" }} />
-          {[["Subtotal", money(data.subtotal)], ...(data.discount ? [["Discount", "−" + money(data.discount)]] : []), ["Tax", money(data.tax)]].map(([l, v]) => (
+          {[["Total Sales", money(data.subtotal)], ...(data.discount ? [["Less: Discount", "−" + money(data.discount)]] : [])].map(([l, v]) => (
             <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: 12.5, color: "var(--ink-3)" }}><span>{l}</span><span className="mono tnum">{v}</span></div>
           ))}
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", fontSize: 16, fontWeight: 700 }}><span>Total</span><span className="mono tnum">{money(data.total)}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", fontSize: 16, fontWeight: 700 }}><span>Total Amount Due</span><span className="mono tnum">{money(data.total)}</span></div>
           <div className="hr" style={{ margin: "10px 0" }} />
           {data.payments.map((p, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: 12.5, color: "var(--ink-2)" }}><span>{p.label}</span><span className="mono tnum">{money(p.amount)}</span></div>
@@ -4944,12 +4910,55 @@ const PD = {
 const pdMoney = (n) => "₱" + Math.round(n).toLocaleString("en-US");
 const TODAY = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
+/* ── Registered business identity (from BIR-authorized sales invoice) ── */
+const BIZ = {
+  name: "EVEROS APPLIANCE CENTER",
+  prop: "MAIDY J. PAZA – Prop.",
+  vatStatus: "NON-VAT REG.",
+  tin: "942-830-279-00000",
+  addr1: "Everose Bldg., Lluch St. Poblacion,",
+  addr2: "9200 Iligan City, Lanao Del Norte, Philippines",
+  atpNo: "101AU2025000000003285",
+  atpDate: "August 27, 2025",
+  series: "1001-2000  20 BKLTS. (50x3)",
+  printedBy: "NEW A & M PRINTING PRESS · 221-1528",
+  accreditation: "101MP20240000000002",
+  notInputTax: "THIS DOCUMENT IS NOT VALID FOR CLAIM OF INPUT TAX.",
+};
+
+/* Peso amount → words (for the "Received the amount of" line) */
+function pesosInWords(n) {
+  n = Math.round((n + Number.EPSILON) * 100) / 100;
+  const pesos = Math.floor(n), cents = Math.round((n - pesos) * 100);
+  const ones = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
+  const tens = ["","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"];
+  function under1000(x) {
+    let s = "";
+    if (x >= 100) { s += ones[Math.floor(x / 100)] + " hundred"; x %= 100; if (x) s += " "; }
+    if (x >= 20) { s += tens[Math.floor(x / 10)]; if (x % 10) s += "-" + ones[x % 10]; }
+    else if (x > 0) s += ones[x];
+    return s;
+  }
+  function toWords(x) {
+    if (x === 0) return "zero";
+    const scales = [["billion",1e9],["million",1e6],["thousand",1e3]];
+    let s = "";
+    for (const [name, val] of scales) { if (x >= val) { s += under1000(Math.floor(x / val)) + " " + name + " "; x %= val; } }
+    if (x > 0) s += under1000(x);
+    return s.trim();
+  }
+  let w = toWords(pesos) + " peso" + (pesos === 1 ? "" : "s");
+  if (cents > 0) w += " and " + toWords(cents) + " centavo" + (cents === 1 ? "" : "s");
+  return w.replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function DocHead({ title, meta, badge }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", borderBottom: "2px solid " + PD.ink, paddingBottom: 14, marginBottom: 18 }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.01em" }}>Everose Marketing Corp.</div>
-        <div style={{ fontSize: 11, color: PD.muted, marginTop: 2 }}>Home Appliances &amp; Furniture · Iligan · Ozamis · Dumaguete</div>
+        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.01em" }}>{BIZ.name}</div>
+        <div style={{ fontSize: 11, color: PD.muted, marginTop: 2 }}>{BIZ.prop} · {BIZ.vatStatus} TIN: {BIZ.tin}</div>
+        <div style={{ fontSize: 10.5, color: PD.muted }}>{BIZ.addr1} {BIZ.addr2}</div>
       </div>
       <div style={{ textAlign: "right" }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: PD.accent }}>{title}</div>
@@ -4965,26 +4974,142 @@ const Row = ({ cells, head, bold, w }) => (
   </div>
 );
 
-/* ---- Receipt ---- */
-function ReceiptDoc({ data }) {
+/* ---- BIR Sales Invoice (NON-VAT) ---- */
+const invLine = "1px solid " + PD.ink;
+function InvField({ label, value, w, grow }) {
   return (
-    <div>
-      <DocHead title="Sales Receipt" meta={data.saleId + " · " + TODAY} badge={"Register: " + ((DATA.WAREHOUSES.find(w => w.id === data.wh) || {}).name || data.wh || "POS")} />
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 14 }}>
-        <div><div style={{ color: PD.muted, fontSize: 10.5 }}>BILL TO</div><div style={{ fontWeight: 600 }}>{data.customer.name}</div>{data.customer.phone && data.customer.phone !== "—" && <div style={{ color: PD.muted }}>{data.customer.phone}</div>}</div>
-        <div style={{ textAlign: "right" }}><div style={{ color: PD.muted, fontSize: 10.5 }}>CASHIER</div><div style={{ fontWeight: 600 }}>{data.cashier || "Cashier"}</div></div>
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 5, flex: grow ? 1 : "none", width: w }}>
+      <span style={{ fontSize: 10.5, color: PD.muted, whiteSpace: "nowrap" }}>{label}</span>
+      <span style={{ flex: 1, borderBottom: invLine, fontSize: 12, fontWeight: 600, minHeight: 16, paddingLeft: 3 }}>{value || " "}</span>
+    </div>
+  );
+}
+function CheckBox({ checked, label }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600 }}>
+      <span style={{ width: 13, height: 13, border: invLine, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, lineHeight: 1 }}>{checked ? "✕" : " "}</span>
+      {label}
+    </span>
+  );
+}
+
+function ReceiptDoc({ data }) {
+  const invDate = data.date ? new Date(data.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : TODAY;
+  const isCharge = data.saleType === "charge";
+  const c = data.customer || {};
+  const rows = data.cart || [];
+  const blankRows = Math.max(0, 6 - rows.length);
+  const gross = data.subtotal || 0;
+  const discount = data.discount || 0;
+  const withholding = data.withholding || 0;
+  const due = data.total != null ? data.total : (gross - discount - withholding);
+  const tcell = { padding: "5px 8px", fontSize: 12, borderRight: invLine, borderBottom: invLine };
+
+  return (
+    <div style={{ border: invLine, fontFamily: "'IBM Plex Sans', sans-serif", color: PD.ink }}>
+      {/* Masthead */}
+      <div style={{ display: "flex", borderBottom: invLine }}>
+        <div style={{ flex: 1, padding: "12px 14px" }}>
+          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>{BIZ.name}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2 }}>{BIZ.prop}</div>
+          <div style={{ fontSize: 11, color: PD.muted, marginTop: 3 }}>{BIZ.vatStatus} TIN: {BIZ.tin}</div>
+          <div style={{ fontSize: 11, color: PD.muted }}>{BIZ.addr1}</div>
+          <div style={{ fontSize: 11, color: PD.muted }}>{BIZ.addr2}</div>
+        </div>
+        <div style={{ width: 230, borderLeft: invLine, padding: "12px 14px", display: "flex", flexDirection: "column" }}>
+          <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: ".04em" }}>SALES INVOICE</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: PD.bad }}>No.</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: PD.bad, letterSpacing: ".05em" }}>{data.invoiceNo || data.saleId}</span>
+          </div>
+          <div style={{ marginTop: 10 }}><InvField label="Date:" value={invDate} grow /></div>
+        </div>
       </div>
-      <Row head cells={["Item", "Qty", "Price", "Amount"]} w={[5, 1, 2, 2]} />
-      {data.cart.map((l) => <Row key={l.sku} w={[5, 1, 2, 2]} cells={[l.name + (l.install ? " + install" : ""), l.qty, pdMoney(l.price), pdMoney(l.price * l.qty + (l.install ? 79 : 0))]} />)}
-      <div style={{ marginLeft: "auto", width: 240, marginTop: 12 }}>
-        <Row cells={["Subtotal", pdMoney(data.subtotal)]} />
-        {data.discount > 0 && <Row cells={["Discount", "−" + pdMoney(data.discount)]} />}
-        <Row cells={["Tax (8%)", pdMoney(data.tax)]} />
-        <Row bold cells={["TOTAL", pdMoney(data.total)]} />
-        {data.payments.map((p, i) => <Row key={i} cells={[p.label, pdMoney(p.amount)]} />)}
-        {data.change > 0 && <Row cells={["Change", pdMoney(data.change)]} />}
+
+      {/* Sale type + Sold to */}
+      <div style={{ padding: "9px 14px", borderBottom: invLine, display: "flex", gap: 22 }}>
+        <CheckBox checked={!isCharge} label="CASH SALES" />
+        <CheckBox checked={isCharge} label="CHARGE SALES" />
       </div>
-      <div style={{ textAlign: "center", marginTop: 28, fontSize: 11, color: PD.muted }}>Thank you for your purchase! · Goods sold are covered by manufacturer warranty.</div>
+      <div style={{ padding: "9px 14px", borderBottom: invLine, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".05em", color: PD.muted }}>SOLD TO</div>
+        <div style={{ display: "flex", gap: 16 }}>
+          <InvField label="Registered Name:" value={c.name} grow />
+          <InvField label="TIN:" value={c.tin} w={170} />
+        </div>
+        <InvField label="Business Address:" value={c.address} grow />
+      </div>
+
+      {/* Line items */}
+      <div>
+        <div style={{ display: "flex", background: "#f3f4f6", borderBottom: invLine, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".03em" }}>
+          <div style={{ ...tcell, flex: 5 }}>Item Description / Nature of Service</div>
+          <div style={{ ...tcell, flex: 1, textAlign: "center" }}>Quantity</div>
+          <div style={{ ...tcell, flex: 1.6, textAlign: "right" }}>Unit Cost</div>
+          <div style={{ ...tcell, flex: 1.6, textAlign: "right", borderRight: "none" }}>Amount</div>
+        </div>
+        {rows.map((l, i) => (
+          <div key={i} style={{ display: "flex" }}>
+            <div style={{ ...tcell, flex: 5 }}>{l.name}{l.install ? " + installation" : ""}</div>
+            <div style={{ ...tcell, flex: 1, textAlign: "center", fontFamily: "'IBM Plex Mono', monospace" }}>{l.qty}</div>
+            <div style={{ ...tcell, flex: 1.6, textAlign: "right", fontFamily: "'IBM Plex Mono', monospace" }}>{pdMoney(l.price)}</div>
+            <div style={{ ...tcell, flex: 1.6, textAlign: "right", borderRight: "none", fontFamily: "'IBM Plex Mono', monospace" }}>{pdMoney(l.price * l.qty + (l.install ? 79 : 0))}</div>
+          </div>
+        ))}
+        {Array.from({ length: blankRows }).map((_, i) => (
+          <div key={"b" + i} style={{ display: "flex" }}>
+            <div style={{ ...tcell, flex: 5 }}>&nbsp;</div>
+            <div style={{ ...tcell, flex: 1 }}>&nbsp;</div>
+            <div style={{ ...tcell, flex: 1.6 }}>&nbsp;</div>
+            <div style={{ ...tcell, flex: 1.6, borderRight: "none" }}>&nbsp;</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Totals */}
+      <div style={{ display: "flex", borderBottom: invLine }}>
+        <div style={{ flex: 5, borderRight: invLine, padding: "8px 12px", fontSize: 11 }}>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 6 }}>
+            <CheckBox checked={data.change != null} label="Received the amount of" />
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, marginTop: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 800 }}>₱</span>
+            <span style={{ flex: 1, borderBottom: invLine, fontSize: 12, fontWeight: 700, fontStyle: "italic", paddingLeft: 4 }}>{pesosInWords(due)}</span>
+          </div>
+        </div>
+        <div style={{ flex: 3.2, padding: 0 }}>
+          {[["Total Sales", pdMoney(gross)], ["Less: Discount (SC/PWD/NAAC/MOV/SP)", discount ? "−" + pdMoney(discount) : "—"], ["Less: Withholding Tax", withholding ? "−" + pdMoney(withholding) : "—"]].map(([l, v], i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 12px", borderBottom: invLine, fontSize: 11.5 }}>
+              <span>{l}</span><span style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>{v}</span>
+            </div>
+          ))}
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "7px 12px", fontSize: 13.5, fontWeight: 800 }}>
+            <span>TOTAL AMOUNT DUE</span><span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{pdMoney(due)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Signatures */}
+      <div style={{ display: "flex", borderBottom: invLine }}>
+        <div style={{ flex: 1, borderRight: invLine, padding: "10px 12px" }}>
+          <div style={{ fontSize: 10.5, color: PD.muted }}>Received Payment</div>
+          <div style={{ marginTop: 22, borderTop: invLine, paddingTop: 4, fontSize: 10.5, textAlign: "center" }}>By: {data.cashier || "Authorized Representative"}</div>
+          <div style={{ fontSize: 9.5, color: PD.muted, textAlign: "center" }}>Authorized Representative</div>
+        </div>
+        <div style={{ flex: 1, padding: "10px 12px", fontSize: 10.5, color: PD.muted }}>
+          <div>SC/PWD/NAAC/MOV/Solo</div>
+          <div style={{ marginTop: 4 }}><InvField label="Parent ID No.:" value="" grow /></div>
+          <div style={{ marginTop: 10 }}><InvField label="Signature:" value="" grow /></div>
+        </div>
+      </div>
+
+      {/* BIR footer */}
+      <div style={{ padding: "8px 12px", fontSize: 8.5, color: PD.muted, lineHeight: 1.5 }}>
+        <div style={{ fontWeight: 700, color: PD.ink, marginBottom: 3 }}>"{BIZ.notInputTax}"</div>
+        <div>BIR Authority to Print No.: {BIZ.atpNo} &nbsp;·&nbsp; Date of ATP: {BIZ.atpDate}</div>
+        <div>Approved Series: {BIZ.series} &nbsp;·&nbsp; Printed by: {BIZ.printedBy}</div>
+        <div>Accreditation No.: {BIZ.accreditation}</div>
+      </div>
     </div>
   );
 }
@@ -5196,7 +5321,7 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
           const p = DATA.pid(m.sku); if (p) soldRev += Math.abs(m.qty) * p.price;
         }
       });
-      return { w, units, value, skus, walerts, sold, soldRev, healthPct: Math.round(ok / DATA.PRODUCTS.length * 100) };
+      return { w, units, value, skus, walerts, sold, soldRev, healthPct: DATA.PRODUCTS.length ? Math.round(ok / DATA.PRODUCTS.length * 100) : 0 };
     });
   }, [rev, salesPeriod]);
 
@@ -5481,8 +5606,23 @@ function saveDataNow() {
       journal: DATA.JOURNAL.slice(0, 500),
     };
     localStorage.setItem(STORE_KEY, JSON.stringify(snap));
+    // Optionally mirror to Google Sheets (throttled). Reads localStorage we just wrote — no recursion.
+    try {
+      if (localStorage.getItem('everose_gs_autosync') === 'on') {
+        const url = localStorage.getItem('everose_gs_url');
+        const last = +(localStorage.getItem('everose_gs_lastpush') || 0);
+        if (url && Date.now() - last > 20000 && window.doBackupToSheets) {
+          localStorage.setItem('everose_gs_lastpush', String(Date.now()));
+          window.doBackupToSheets(url); // fire-and-forget
+        }
+      }
+    } catch {}
     return snap.ts;
-  } catch(e) { return null; }
+  } catch(e) {
+    // Surface the failure (usually QuotaExceededError) so the app can warn instead of failing silently
+    try { window.dispatchEvent(new CustomEvent('everose-save-error', { detail: String(e && e.message || e) })); } catch {}
+    return null;
+  }
 }
 
 function loadSavedData() {
@@ -5491,6 +5631,8 @@ function loadSavedData() {
     if (!raw) return null;
     const snap = JSON.parse(raw);
     if (!snap || (snap.v !== 1 && snap.v !== 2)) return null;
+    // Validate shape BEFORE touching live data — a truncated snapshot must not half-apply
+    if (!Array.isArray(snap.products) || !Array.isArray(snap.movements) || !Array.isArray(snap.pos) || !Array.isArray(snap.journal)) return null;
     if (snap.v === 2) {
       // Full product restore (v2)
       snap.products.forEach(s => {
@@ -5533,6 +5675,21 @@ function loadSavedData() {
 
 function clearSavedData() { localStorage.removeItem(STORE_KEY); }
 
+/* Wipe everything to a true blank slate: no products, no movements, no POs,
+   no journal, only the Walk-in customer. Persists so reload stays empty. */
+function startCleanData() {
+  DATA.PRODUCTS.length = 0;
+  DATA.MOVEMENTS.length = 0;
+  DATA.POS.length = 0;
+  if (DATA.JOURNAL) DATA.JOURNAL.length = 0;
+  if (DATA.CUSTOMERS) {
+    const walkIn = DATA.CUSTOMERS.find(c => c.type === "Walk-in") || { id: "C-1001", name: "Walk-in Customer", phone: "—", email: "—", type: "Walk-in", creditLimit: 0, balance: 0, terms: "—" };
+    DATA.CUSTOMERS.length = 0;
+    DATA.CUSTOMERS.push(walkIn);
+  }
+  return saveDataNow();
+}
+
 function doExportJSON() {
   const raw = localStorage.getItem(STORE_KEY);
   const data = raw ? JSON.parse(raw) : { v: 1, ts: Date.now(), note: "No saved data - using demo state" };
@@ -5549,12 +5706,18 @@ function doImportJSON(file, onDone) {
   reader.onload = (e) => {
     try {
       const snap = JSON.parse(e.target.result);
-      if (!snap.v || !snap.products) throw new Error('Invalid backup file');
-      localStorage.setItem(STORE_KEY, JSON.stringify({...snap, v: 1}));
+      if (!snap || typeof snap !== 'object') throw new Error('Invalid backup file');
+      if (!Array.isArray(snap.products) || !Array.isArray(snap.movements) || !Array.isArray(snap.pos) || !Array.isArray(snap.journal))
+        throw new Error('Invalid backup file — missing products/movements/pos/journal sections');
+      if (snap.products.some(p => !p || typeof p.sku !== 'string'))
+        throw new Error('Invalid backup file — malformed product entries');
+      const v = snap.v === 2 ? 2 : 1; // preserve version: v2 backups must restore via the full v2 path
+      localStorage.setItem(STORE_KEY, JSON.stringify({ ...snap, v }));
       loadSavedData();
       onDone(true, null);
     } catch(err) { onDone(false, err.message); }
   };
+  reader.onerror = () => onDone(false, 'Could not read the file');
   reader.readAsText(file);
 }
 
@@ -5600,64 +5763,135 @@ function doExportXLSX() {
   XLSX.writeFile(wb, 'Everose-ERP-' + new Date().toISOString().slice(0,10) + '.xlsx');
 }
 
-async function doSyncToGoogleSheets(url) {
+/* Push a full snapshot to Google Sheets (cloud backup). The Apps Script stores the
+   raw snapshot (chunked) for restore AND derives human-readable sheets from it.
+   Uses no-cors POST — the request is delivered but the response can't be read. */
+async function doBackupToSheets(url) {
   if (!url || !url.startsWith('http')) return { ok: false, err: 'Invalid URL' };
+  const snapshot = localStorage.getItem(STORE_KEY);
+  if (!snapshot) return { ok: false, err: 'Nothing saved locally yet — click "Save now" first.' };
   try {
-    const payload = {
-      action: 'sync',
-      products: DATA.PRODUCTS.map(p => ({ sku: p.sku, name: p.name, category: p.category, total: p.total, price: p.price, cost: p.cost, onOrder: p.onOrder||0 })),
-      movements: DATA.MOVEMENTS.slice(0,500).map(m => ({ id: m.id, sku: m.sku, type: m.type, qty: m.qty, wh: m.wh, ref: m.ref||'', days: m.days })),
-      pos: DATA.POS.map(po => ({ id: po.id, supplier: (DATA.SUPPLIERS.find(s=>s.id===po.supplierId)||{}).name||'', status: po.status, total: po.lines.reduce((s,l)=>s+l.qty*l.cost,0) })),
-      journal: DATA.JOURNAL.slice(0,200).map(je => ({ id: je.id, memo: je.memo, days: je.days })),
-      customers: DATA.CUSTOMERS.map(c => ({ id: c.id, name: c.name, balance: c.balance||0 })),
-      exportedAt: new Date().toISOString(),
-    };
-    await fetch(url, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-    return { ok: true };
+    await fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'backup', snapshot }) });
+    try { localStorage.setItem('everose_gs_lastbackup', String(Date.now())); } catch {}
+    return { ok: true, noconfirm: true };
   } catch(e) { return { ok: false, err: e.message }; }
 }
 
+/* Legacy alias — same as a cloud backup (kept for older callers). */
+async function doSyncToGoogleSheets(url) { return doBackupToSheets(url); }
+
+/* Pull the latest snapshot back from Google Sheets and load it (cloud restore). */
+async function doRestoreFromSheets(url) {
+  if (!url || !url.startsWith('http')) return { ok: false, err: 'Invalid URL' };
+  try {
+    const sep = url.includes('?') ? '&' : '?';
+    const res = await fetch(url + sep + 'action=restore', { method: 'GET', redirect: 'follow' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = (await res.text() || '').trim();
+    let snap;
+    try { snap = JSON.parse(text); } catch { throw new Error('No valid backup found in the sheet (is the Apps Script updated & redeployed?)'); }
+    if (!snap || typeof snap !== 'object' || !Array.isArray(snap.products) || !Array.isArray(snap.movements))
+      throw new Error('The cloud backup is empty or in an old format.');
+    localStorage.setItem(STORE_KEY, JSON.stringify({ ...snap, v: snap.v === 2 ? 2 : 1 }));
+    loadSavedData();
+    return { ok: true, ts: snap.ts };
+  } catch(e) {
+    const msg = /Failed to fetch|NetworkError|CORS/i.test(e.message)
+      ? 'Could not read from Google Sheets (network/CORS). Make sure the Apps Script is deployed with access "Anyone", or use JSON import instead.'
+      : e.message;
+    return { ok: false, err: msg };
+  }
+}
+
 const GS_SCRIPT_TEMPLATE = `// =====================================================
-// Everose ERP — Google Apps Script (paste in a new
-// Apps Script project bound to your Google Sheet)
+// Everose ERP — Google Apps Script backend (two-way)
+// Paste in a new Apps Script project, Deploy as Web App
+// ("Execute as: Me", "Who has access: Anyone"), then copy
+// the /exec URL into the ERP Data panel.
+//   POST {action:'backup', snapshot:'<json>'}  -> stores backup + readable sheets
+//   GET  ?action=restore                        -> returns the latest snapshot JSON
 // =====================================================
+var BACKUP_SHEET = '_ERP_Backup';   // raw snapshot (chunked), used for restore
+var CHUNK = 45000;                  // chars per cell (cell limit is 50k)
+
 function doPost(e) {
   try {
-    const data = JSON.parse(e.postData.contents);
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (data.action === 'sync') {
-      writeSheet(ss, 'Products', ['sku','name','category','total','price','cost','onOrder'], data.products);
-      writeSheet(ss, 'Movements', ['id','sku','type','qty','wh','ref','days'], data.movements);
-      writeSheet(ss, 'PO Summary', ['id','supplier','status','total'], data.pos);
-      writeSheet(ss, 'Customers AR', ['id','name','balance'], data.customers);
+    var data = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (data.action === 'backup' && data.snapshot) {
+      storeSnapshot(ss, data.snapshot);
+      try { writeReadableSheets(ss, JSON.parse(data.snapshot)); } catch (err) {}
+    } else if (data.action === 'sync') {
+      writeReadableSheets(ss, data);
     }
     return ok();
-  } catch(e) { return ok('error: ' + e.message); }
+  } catch (err) { return ok('error: ' + err.message); }
 }
+
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(BACKUP_SHEET);
+  var s = '';
+  if (sh && sh.getLastRow() > 0) {
+    var vals = sh.getRange(1, 1, sh.getLastRow(), 1).getValues();
+    for (var i = 0; i < vals.length; i++) s += vals[i][0];
+  }
+  return ContentService.createTextOutput(s || '{}').setMimeType(ContentService.MimeType.JSON);
+}
+
+function storeSnapshot(ss, s) {
+  var sh = ss.getSheetByName(BACKUP_SHEET);
+  if (sh) ss.deleteSheet(sh);
+  sh = ss.insertSheet(BACKUP_SHEET);
+  var rows = [];
+  for (var i = 0; i < s.length; i += CHUNK) rows.push([s.substring(i, i + CHUNK)]);
+  if (rows.length) sh.getRange(1, 1, rows.length, 1).setValues(rows);
+  sh.hideSheet();
+}
+
+function writeReadableSheets(ss, d) {
+  var whName = {};
+  (d.warehouses || []).forEach(function (w) { whName[w.id] = w.short || w.name; });
+  writeSheet(ss, 'Products', ['sku','name','category','total','price','cost','onOrder'], d.products);
+  writeSheet(ss, 'Movements', ['id','sku','type','qty','wh','ref','days'], d.movements);
+  writeSheet(ss, 'Customers', ['id','name','balance'], d.customers);
+  var po = (d.pos || []).map(function (p) {
+    return { id: p.id, status: p.status, total: (p.lines || []).reduce(function (s, l) { return s + l.qty * l.cost; }, 0) };
+  });
+  writeSheet(ss, 'PO Summary', ['id','status','total'], po);
+  var je = (d.journal || []).map(function (j) { return { id: j.id, memo: j.memo, ref: j.ref || '', days: j.days }; });
+  writeSheet(ss, 'Journal', ['id','memo','ref','days'], je);
+}
+
 function writeSheet(ss, name, cols, rows) {
-  let sh = ss.getSheetByName(name);
+  var sh = ss.getSheetByName(name);
   if (!sh) sh = ss.insertSheet(name);
   sh.clearContents();
-  const header = cols.map(c => c.toUpperCase());
-  const body = (rows||[]).map(r => cols.map(c => r[c] !== undefined ? r[c] : ''));
-  if (body.length) sh.getRange(1, 1, body.length+1, cols.length).setValues([header, ...body]);
+  var header = cols.map(function (c) { return c.toUpperCase(); });
+  var body = (rows || []).map(function (r) { return cols.map(function (c) { return r[c] !== undefined ? r[c] : ''; }); });
+  if (body.length) sh.getRange(1, 1, body.length + 1, cols.length).setValues([header].concat(body));
   else sh.getRange(1, 1, 1, cols.length).setValues([header]);
 }
+
 function ok(msg) {
-  return ContentService.createTextOutput(JSON.stringify({success: true, msg: msg||'ok'}))
+  return ContentService.createTextOutput(JSON.stringify({ success: true, msg: msg || 'ok' }))
     .setMimeType(ContentService.MimeType.JSON);
 }`;
 
 function DataPanel({ open, onClose, onReload }) {
   const [gsUrl, setGsUrl] = useStateDS(() => localStorage.getItem('everose_gs_url') || '');
   const [autoSave, setAutoSave] = useStateDS(() => localStorage.getItem('everose_autosave') !== 'off');
+  const [gsAuto, setGsAuto] = useStateDS(() => localStorage.getItem('everose_gs_autosync') === 'on');
   const [status, setStatus] = useStateDS('');
   const [syncing, setSyncing] = useStateDS(false);
   const [showScript, setShowScript] = useStateDS(false);
+  const [cloudTs, setCloudTs] = useStateDS(() => +(localStorage.getItem('everose_gs_lastbackup') || 0));
   const fileRef = useRefDS(null);
 
   useEffectDS(() => { localStorage.setItem('everose_gs_url', gsUrl); }, [gsUrl]);
   useEffectDS(() => { localStorage.setItem('everose_autosave', autoSave ? 'on' : 'off'); }, [autoSave]);
+  useEffectDS(() => { localStorage.setItem('everose_gs_autosync', gsAuto ? 'on' : 'off'); }, [gsAuto]);
 
   if (!open) return null;
 
@@ -5703,14 +5937,17 @@ function DataPanel({ open, onClose, onReload }) {
               <Btn variant="primary" onClick={() => { const ts = saveDataNow(); setStatus(ts ? '&#x2713; Saved at ' + new Date(ts).toLocaleTimeString() : '&#x2717; Save failed'); }}>
                 <Icon name="check" size={13} />Save now
               </Btn>
-              <Btn onClick={() => { if (confirm('Reset all data to demo state? This cannot be undone.')) { clearSavedData(); location.reload(); } }} >
-                <Icon name="refresh" size={13} />Reset to demo
+              <Btn onClick={() => { if (confirm('Reset to the starter product catalog? This restores the seeded Everose products and clears any changes you made. This cannot be undone.')) { clearSavedData(); location.reload(); } }} >
+                <Icon name="refresh" size={13} />Reset to starter catalog
+              </Btn>
+              <Btn onClick={() => { if (confirm('Start with a CLEAN, EMPTY system? This deletes ALL products, stock, sales, purchase orders and journal entries (only the Walk-in customer is kept). Export a backup first if unsure. This cannot be undone.')) { startCleanData(); location.reload(); } }} >
+                <Icon name="trash" size={13} />Empty all data (clean slate)
               </Btn>
             </div>
             {status && <div style={{ marginTop: 10, fontSize: 12, color: status.startsWith('✓') ? 'var(--ok)' : 'var(--out)', fontWeight: 600 }}>{status}</div>}
           </Section>
 
-          <Section title="File Backup" icon="box">
+          <Section title="Local backup & restore" icon="box">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <Btn onClick={doExportJSON}><Icon name="arrowR" size={13} />Export JSON backup</Btn>
               <Btn onClick={doExportXLSX}><Icon name="arrowR" size={13} />Export to Excel (.xlsx)</Btn>
@@ -5732,9 +5969,9 @@ function DataPanel({ open, onClose, onReload }) {
             </div>
           </Section>
 
-          <Section title="Google Sheets Sync" icon="chart">
+          <Section title="Google Sheets — cloud backup" icon="chart">
             <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 10, lineHeight: 1.6 }}>
-              Sync inventory, sales, and purchasing data directly to a Google Spreadsheet via a Google Apps Script endpoint.
+              Keep a copy of all data in a Google Spreadsheet. <strong>Back up</strong> pushes your data to the cloud; <strong>Restore</strong> pulls it back onto this device — handy for moving between computers or recovering after a reset.
             </div>
             <label style={{ fontSize: 11.5, color: 'var(--ink-3)', display: 'block', marginBottom: 4 }}>Apps Script Web App URL</label>
             <input
@@ -5742,27 +5979,47 @@ function DataPanel({ open, onClose, onReload }) {
               placeholder="https://script.google.com/macros/s/…/exec"
               style={{ width: '100%', padding: '9px 12px', borderRadius: 7, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 12.5, fontFamily: 'var(--mono)', marginBottom: 10 }}
             />
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', fontSize: 12.5, marginBottom: 10 }}>
+              <input type="checkbox" checked={gsAuto} onChange={e => setGsAuto(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
+              Also back up to Google Sheets automatically (on save)
+            </label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
               <Btn variant="primary" disabled={!gsUrl || syncing}
                 onClick={async () => {
-                  setSyncing(true); setStatus('Syncing…');
-                  const r = await doSyncToGoogleSheets(gsUrl);
+                  setSyncing(true); setStatus('Backing up to Google Sheets…');
+                  saveDataNow();
+                  const r = await doBackupToSheets(gsUrl);
                   setSyncing(false);
-                  setStatus(r.ok ? '✓ Data sent to Google Sheets' : '✗ Sync failed: ' + r.err);
+                  if (r.ok) { const t = Date.now(); setCloudTs(t); setStatus('✓ Backup sent to Google Sheets'); }
+                  else setStatus('✗ Backup failed: ' + r.err);
                 }}>
-                <Icon name="arrowR" size={13} />{syncing ? 'Syncing…' : 'Sync to Google Sheets'}
+                <Icon name="arrowR" size={13} />{syncing ? 'Working…' : 'Back up to Google Sheets'}
+              </Btn>
+              <Btn disabled={!gsUrl || syncing}
+                onClick={async () => {
+                  if (!confirm('Restore from Google Sheets? This REPLACES all data currently on this device with the latest cloud backup. Export a local backup first if unsure.')) return;
+                  setSyncing(true); setStatus('Restoring from Google Sheets…');
+                  const r = await doRestoreFromSheets(gsUrl);
+                  setSyncing(false);
+                  if (r.ok) { setStatus('✓ Restored from Google Sheets — reloading…'); setTimeout(() => { onReload && onReload(); onClose(); }, 900); }
+                  else setStatus('✗ Restore failed: ' + r.err);
+                }}>
+                <Icon name="truck" size={13} />Restore from Google Sheets
               </Btn>
             </div>
+            <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 12 }}>Last cloud backup: <span className="mono">{cloudTs ? new Date(cloudTs).toLocaleString() : 'Never'}</span></div>
             <button className="btn ghost sm" style={{ fontSize: 11.5 }} onClick={() => setShowScript(s => !s)}>
               {showScript ? '▲ Hide' : '▼ Show'} Apps Script setup code
             </button>
             {showScript && (
               <div style={{ marginTop: 10 }}>
                 <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 6, lineHeight: 1.6 }}>
-                  1. Open <strong>script.google.com</strong> → New project<br/>
-                  2. Paste the code below, save, then <strong>Deploy → New deployment → Web app</strong><br/>
-                  3. Set "Execute as: Me" and "Who has access: Anyone"<br/>
-                  4. Copy the deployment URL and paste it above
+                  1. Create a Google Sheet → <strong>Extensions → Apps Script</strong><br/>
+                  2. Paste the code below (replace everything), save, then <strong>Deploy → New deployment → Web app</strong><br/>
+                  3. Set "Execute as: Me" and "Who has access: <strong>Anyone</strong>" (required for Restore)<br/>
+                  4. Copy the <strong>/exec</strong> URL and paste it above<br/>
+                  <em>Already deployed an older version? Paste this code, then Deploy → Manage deployments → edit → Version: New version.</em>
                 </div>
                 <div style={{ position: 'relative' }}>
                   <pre style={{ background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 7, padding: 12, fontSize: 10.5, overflowX: 'auto', maxHeight: 260, fontFamily: 'var(--mono)', color: 'var(--ink-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{GS_SCRIPT_TEMPLATE}</pre>
@@ -5781,7 +6038,7 @@ function DataPanel({ open, onClose, onReload }) {
   );
 }
 
-Object.assign(window, { saveDataNow, loadSavedData, clearSavedData, doExportJSON, doImportJSON, doExportXLSX, doSyncToGoogleSheets, DataPanel });
+Object.assign(window, { saveDataNow, loadSavedData, clearSavedData, startCleanData, doExportJSON, doImportJSON, doExportXLSX, doSyncToGoogleSheets, doBackupToSheets, doRestoreFromSheets, DataPanel });
 </script>
 
 <script type="text/babel">
@@ -6484,14 +6741,40 @@ const USERS = [
   { id: "U-004", name: "Carla Reyes",    role: "Cashier — Dumaguete", pin: "3333", wh: "WH-DUMAGUETE" },
 ];
 
+/* Custom accounts saved from Users & Settings override the defaults above. */
+const USERS_STORE_KEY = 'everose_users_v1';
+function loadUsers() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(USERS_STORE_KEY) || 'null');
+    if (Array.isArray(arr) && arr.length) return arr;
+  } catch {}
+  return USERS;
+}
+function saveUsers(list) { try { localStorage.setItem(USERS_STORE_KEY, JSON.stringify(list)); } catch {} }
+
 /* ── Login screen ── */
 function LoginScreen({ onLogin }) {
+  const users = React.useMemo(loadUsers, []);
   const [selUser, setSelUser] = React.useState(null);
   const [pin, setPin] = React.useState("");
   const [err, setErr] = React.useState("");
   const [shake, setShake] = React.useState(false);
   const pinRef = React.useRef("");
   const timerRef = React.useRef(null);
+
+  /* Brute-force lockout: 5 consecutive wrong PINs lock the pad for 30 seconds */
+  const failsRef = React.useRef(0);
+  const lockUntilRef = React.useRef(0);
+  const [lockLeft, setLockLeft] = React.useState(0);
+  React.useEffect(() => {
+    if (lockLeft <= 0) return;
+    const t = setTimeout(() => {
+      const left = Math.max(0, Math.ceil((lockUntilRef.current - Date.now()) / 1000));
+      setLockLeft(left);
+      if (left === 0) { failsRef.current = 0; setErr(""); }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [lockLeft]);
 
   function pickUser(u) { setSelUser(u); setPin(""); pinRef.current = ""; setErr(""); }
 
@@ -6501,6 +6784,7 @@ function LoginScreen({ onLogin }) {
   }
 
   function pressKey(k) {
+    if (lockUntilRef.current > Date.now()) return;
     if (k === "⌫") { pinRef.current = pinRef.current.slice(0, -1); setPin(pinRef.current); setErr(""); return; }
     if (pinRef.current.length >= 4) return;
     pinRef.current += k;
@@ -6511,9 +6795,18 @@ function LoginScreen({ onLogin }) {
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
         if (selUser && np === selUser.pin) {
+          failsRef.current = 0;
           onLogin(selUser);
         } else {
-          setShake(true); setErr("Incorrect PIN — try again"); pinRef.current = ""; setPin("");
+          failsRef.current += 1;
+          setShake(true); pinRef.current = ""; setPin("");
+          if (failsRef.current >= 5) {
+            lockUntilRef.current = Date.now() + 30000;
+            setLockLeft(30);
+            setErr("Too many attempts");
+          } else {
+            setErr("Incorrect PIN — try again (" + (5 - failsRef.current) + " left)");
+          }
           setTimeout(() => setShake(false), 500);
         }
       }, 160);
@@ -6568,7 +6861,7 @@ function LoginScreen({ onLogin }) {
         <div style={{ width: "min(480px, 94vw)" }}>
           <div style={{ fontSize: 12.5, color: "var(--ink-3)", textAlign: "center", marginBottom: 16, fontWeight: 600, letterSpacing: ".03em" }}>SELECT YOUR ACCOUNT</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {USERS.map(u => (
+            {users.map(u => (
               <button key={u.id} onClick={() => pickUser(u)} style={{
                 display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
                 background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 12,
@@ -6591,7 +6884,7 @@ function LoginScreen({ onLogin }) {
         /* ── PIN pad ── */
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, width: "min(300px,90vw)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button onClick={goBack} title="Back (Esc)" style={{
+            <button onClick={goBack} title="Back (Esc)" aria-label="Back to account selection" style={{
               background: "none", border: "1px solid var(--line)", cursor: "pointer", color: "var(--ink-2)",
               width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
             }}>
@@ -6617,17 +6910,24 @@ function LoginScreen({ onLogin }) {
               }} />
             ))}
           </div>
-          {err && <div style={{ fontSize: 12, color: "var(--low)", fontWeight: 600 }}>{err}</div>}
+          {(err || lockLeft > 0) && (
+            <div style={{ fontSize: 12, color: "var(--low)", fontWeight: 600 }}>
+              {lockLeft > 0 ? "Too many attempts — locked for " + lockLeft + "s" : err}
+            </div>
+          )}
 
           {/* Numpad */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 9, width: "100%" }}>
             {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) => (
               k === "" ? <div key={"e" + i} /> : (
-                <button key={k} onClick={() => pressKey(k)} style={{
+                <button key={k} onClick={() => pressKey(k)} disabled={lockLeft > 0}
+                  aria-label={k === "⌫" ? "Delete digit" : "Digit " + k}
+                  style={{
                   height: 58, borderRadius: 10, border: "1px solid var(--line)",
                   background: "var(--bg-2)", color: "var(--ink)",
                   fontSize: k === "⌫" ? 20 : 22, fontWeight: 700,
-                  cursor: "pointer", transition: "background .1s, border-color .1s",
+                  cursor: lockLeft > 0 ? "not-allowed" : "pointer", opacity: lockLeft > 0 ? 0.45 : 1,
+                  transition: "background .1s, border-color .1s, opacity .2s",
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = "var(--panel-2)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-2)"; e.currentTarget.style.borderColor = "var(--line)"; }}>
@@ -6648,6 +6948,107 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+/* ── Users & Settings (Managing Director only) ── */
+function UserAdminScreen({ currentUser, toast }) {
+  const [users, setUsers] = React.useState(loadUsers);
+  const [showPins, setShowPins] = React.useState(false);
+  const [dirty, setDirty] = React.useState(false);
+
+  const inp = {
+    height: 34, padding: "0 10px", borderRadius: 7, fontSize: 12.5, width: "100%",
+    border: "1px solid var(--line)", background: "var(--bg)", color: "var(--ink)", outline: "none",
+  };
+
+  const upd = (i, field, val) => { setUsers(us => us.map((u, j) => j === i ? { ...u, [field]: val } : u)); setDirty(true); };
+
+  const addUser = () => {
+    const maxN = users.reduce((m, u) => Math.max(m, parseInt((u.id || "").replace("U-", "")) || 0), 0);
+    setUsers(us => [...us, { id: "U-" + String(maxN + 1).padStart(3, "0"), name: "", role: "Cashier", pin: "", wh: DATA.WAREHOUSES[0].id }]);
+    setDirty(true);
+  };
+
+  const removeUser = (i) => {
+    const u = users[i];
+    if (u.id === currentUser.id) { toast("You can't delete the account you're signed in with", "low"); return; }
+    if (!confirm("Delete account \"" + (u.name || u.id) + "\"? They will no longer be able to sign in.")) return;
+    setUsers(us => us.filter((_, j) => j !== i));
+    setDirty(true);
+  };
+
+  const save = () => {
+    for (const u of users) {
+      if (!u.name.trim()) { toast("Every account needs a name", "low"); return; }
+      if (!/^\d{4}$/.test(u.pin)) { toast((u.name || u.id) + ": PIN must be exactly 4 digits", "low"); return; }
+    }
+    if (new Set(users.map(u => u.pin)).size !== users.length) { toast("Two accounts share the same PIN — make each one unique", "low"); return; }
+    if (!users.some(u => u.wh === "all")) { toast("Keep at least one All-branches (Managing Director) account", "low"); return; }
+    saveUsers(users);
+    setDirty(false);
+    toast("Accounts saved — changes apply on the login screen", "ok");
+  };
+
+  const resetDefaults = () => {
+    if (!confirm("Discard all custom accounts and restore the 4 default users?")) return;
+    try { localStorage.removeItem(USERS_STORE_KEY); } catch {}
+    setUsers(USERS);
+    setDirty(false);
+    toast("Restored default user accounts", "ok");
+  };
+
+  const whOpts = [{ id: "all", name: "All branches (Director)" }, ...DATA.WAREHOUSES];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn .2s ease both", maxWidth: 860 }}>
+      <div className="card" style={{ overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "13px 16px", borderBottom: "1px solid var(--line-soft)", flexWrap: "wrap" }}>
+          <Icon name="people" size={15} style={{ color: "var(--accent-text)" }} />
+          <span style={{ fontWeight: 700, fontSize: 13.5 }}>User accounts</span>
+          <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{users.length} account{users.length !== 1 ? "s" : ""}</span>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button className="btn ghost sm" onClick={() => setShowPins(s => !s)}>{showPins ? "Hide PINs" : "Show PINs"}</button>
+            <button className="btn ghost sm" onClick={addUser}><Icon name="plus" size={12} /> Add account</button>
+            <button className="btn primary sm" onClick={save} disabled={!dirty}><Icon name="check" size={12} /> Save changes</button>
+          </div>
+        </div>
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "40px 1.3fr 1.1fr 1.1fr 76px 34px", gap: 8, fontSize: 10, color: "var(--ink-4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".04em", padding: "0 2px" }}>
+            <span /><span>Name</span><span>Role</span><span>Branch access</span><span>PIN</span><span />
+          </div>
+          {users.map((u, i) => (
+            <div key={u.id} style={{ display: "grid", gridTemplateColumns: "40px 1.3fr 1.1fr 1.1fr 76px 34px", gap: 8, alignItems: "center" }}>
+              <Avatar name={u.name || "?"} size={34} />
+              <input style={inp} value={u.name} placeholder="Full name" onChange={e => upd(i, "name", e.target.value)} />
+              <input style={inp} value={u.role} placeholder="Role title" onChange={e => upd(i, "role", e.target.value)} />
+              <select style={{ ...inp, cursor: "pointer" }} value={u.wh} onChange={e => upd(i, "wh", e.target.value)}>
+                {whOpts.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+              <input className="mono" style={{ ...inp, textAlign: "center", letterSpacing: showPins ? "1px" : "2px" }}
+                type={showPins ? "text" : "password"} value={u.pin} maxLength={4} inputMode="numeric" placeholder="····"
+                onChange={e => upd(i, "pin", e.target.value.replace(/\D/g, "").slice(0, 4))} />
+              <button title={u.id === currentUser.id ? "This is your account" : "Delete account"} onClick={() => removeUser(i)} disabled={u.id === currentUser.id}
+                style={{ background: "none", border: "1px solid transparent", cursor: u.id === currentUser.id ? "not-allowed" : "pointer", color: u.id === currentUser.id ? "var(--ink-4)" : "var(--ink-3)", display: "flex", alignItems: "center", justifyContent: "center", height: 34, borderRadius: 7, opacity: u.id === currentUser.id ? 0.45 : 1 }}
+                onMouseEnter={e => { if (u.id !== currentUser.id) { e.currentTarget.style.color = "var(--low)"; e.currentTarget.style.borderColor = "var(--low)"; } }}
+                onMouseLeave={e => { e.currentTarget.style.color = u.id === currentUser.id ? "var(--ink-4)" : "var(--ink-3)"; e.currentTarget.style.borderColor = "transparent"; }}>
+                <Icon name="trash" size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: "14px 16px", display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+        <Icon name="warning" size={15} style={{ color: "var(--watch)", flex: "none", marginTop: 2 }} />
+        <div style={{ flex: 1, minWidth: 240, fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55 }}>
+          Accounts are saved in this browser's storage and apply on the next visit to the login screen.
+          Signed-in sessions keep their current name and branch until they sign out and back in.
+          Other devices keep the default accounts unless you also save changes there (or edit the <span className="mono">USERS</span> array in the file).
+        </div>
+        <button className="btn ghost sm" onClick={resetDefaults}><Icon name="refresh" size={12} /> Reset to defaults</button>
+      </div>
+    </div>
+  );
+}
+
 const ROUTE_META = {
   dashboard: { title: "Operations dashboard", sub: "Live inventory & purchasing overview" },
   pos: { title: "Point of Sale", sub: "Cashier · Branch register" },
@@ -6658,6 +7059,7 @@ const ROUTE_META = {
   customers: { title: "Customers & Credit", sub: "Customer accounts, credit limits & financing companies" },
   accounting: { title: "Accounting", sub: "Double-entry ledger, AR/AP & reports" },
   reports: { title: "Reports", sub: "Sales, inventory & purchasing analytics" },
+  settings: { title: "Users & Settings", sub: "Accounts, PINs & branch access" },
 };
 
 function useViewport() {
@@ -6695,6 +7097,7 @@ function App() {
 
   function handleLogin(user) {
     setCurrentUser(user);
+    setRoute("dashboard");
     setActiveBranch(user.wh === "all" ? "WH-ILIGAN" : user.wh);
     try { localStorage.setItem(AUTH_STORE_KEY, JSON.stringify(user)); } catch {}
     try {
@@ -6708,6 +7111,22 @@ function App() {
     setActiveBranch("WH-ILIGAN");
     try { localStorage.removeItem(AUTH_STORE_KEY); } catch {}
   }
+
+  /* Surface storage save failures (quota exceeded etc.) as a visible warning */
+  useE(() => {
+    const fn = (e) => pushToast("Save failed — browser storage may be full. Export a JSON backup, then clear old data. (" + e.detail + ")", "low");
+    window.addEventListener("everose-save-error", fn);
+    return () => window.removeEventListener("everose-save-error", fn);
+  }, []);
+
+  /* Warn before closing the tab when auto-save is off and this session made changes */
+  useE(() => {
+    const fn = (e) => {
+      if (rev > 0 && localStorage.getItem("everose_autosave") === "off") { e.preventDefault(); e.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", fn);
+    return () => window.removeEventListener("beforeunload", fn);
+  }, [rev]);
 
   /* Idle auto-lock — sign out after 10 minutes without pointer/keyboard activity */
   const IDLE_LOCK_MS = 10 * 60 * 1000;
@@ -6876,6 +7295,7 @@ function App() {
       if (amt > 0) lines.push(L(tAcct(pmt.tender), amt, 0));
       if ((pmt.tender === "credit" || pmt.tender === "cod") && sale.customer.id !== "C-1001") sale.customer.balance += pmt.amount;
     });
+    if (sale.withholding > 0) lines.push(L("1300", sale.withholding, 0)); // creditable withholding tax withheld by customer
     const serviceTotal = sale.cart.reduce((s, l) => s + (l.install ? 79 : 0), 0);
     const productRev = (sale.subtotal - sale.discount) - serviceTotal;
     lines.push(L("4000", 0, Math.max(0, productRev)));
@@ -6982,6 +7402,7 @@ function App() {
               {route === "customers" && <CustomersScreen rev={rev} bump={bump} toast={pushToast} />}
               {route === "accounting" && <AccountingScreen rev={rev} onPrint={setPrintDoc} />}
               {route === "reports" && <ReportsScreen rev={rev} toast={pushToast} onPrint={setPrintDoc} />}
+              {route === "settings" && isDirector && <UserAdminScreen currentUser={currentUser} toast={pushToast} />}
             </div>
           </div>
         </main>
@@ -7025,9 +7446,36 @@ function App() {
   );
 }
 
+/* ── Error boundary: a crash in any screen shows a recovery page instead of a blank window ── */
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error('[Everose] Render error:', error, info && info.componentStack); }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, background: "var(--bg)", padding: 24, textAlign: "center" }}>
+        <EveroseLogo size={46} />
+        <div style={{ fontWeight: 800, fontSize: 20 }}>Something went wrong</div>
+        <div style={{ fontSize: 13, color: "var(--ink-3)", maxWidth: 480, lineHeight: 1.6 }}>
+          The screen hit an unexpected error. Your data is safe in browser storage — reloading usually fixes it.
+          If it keeps happening, export a JSON backup and contact support.
+        </div>
+        <div className="mono" style={{ fontSize: 11, color: "var(--low)", maxWidth: 560, overflowWrap: "anywhere", background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px" }}>
+          {String(this.state.error && this.state.error.message || this.state.error)}
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className="btn primary" onClick={() => location.reload()}>Reload app</button>
+          {window.doExportJSON && <button className="btn ghost" onClick={() => doExportJSON()}>Export JSON backup</button>}
+        </div>
+      </div>
+    );
+  }
+}
+
 // Load persisted data before first render
 if (window.loadSavedData) { const ts = loadSavedData(); if (ts) console.info('[Everose] Restored saved data from', new Date(ts).toLocaleString()); }
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(<ErrorBoundary><App /></ErrorBoundary>);
 
 </script>
 
