@@ -356,7 +356,7 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
   <div class="steps">
     <div class="step"><div class="step-n">1</div><div class="step-b"><div class="step-t">Login Screen on startup</div><div class="step-x">The login screen appears before any ERP screen. If a session is stored in <code>localStorage</code> key <code>everose_auth_v1</code>, the user is restored automatically and login is skipped.</div></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-b"><div class="step-t">Select account</div><div class="step-x">Four user cards are shown. Clicking a card sets the selected user and reveals the PIN numpad.</div></div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-b"><div class="step-t">Enter 4-digit PIN</div><div class="step-x">Digits can be entered on the on-screen numpad or a physical keyboard (0–9 types, Backspace deletes, Esc returns to account selection). Auto-submits after the 4th digit. Wrong PIN triggers a CSS shake animation and clears the input. No lockout policy — retry is immediate.</div></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-b"><div class="step-t">Enter 4-digit PIN</div><div class="step-x">Digits can be entered on the on-screen numpad or a physical keyboard (0–9 types, Backspace deletes, Esc returns to account selection). Auto-submits after the 4th digit. Wrong PIN triggers a CSS shake animation, clears the input, and shows remaining attempts. After 5 consecutive failures the pad locks for 30 seconds with a visible countdown (brute-force protection); the counter resets on a successful login or when the lock expires.</div></div></div>
     <div class="step"><div class="step-n">4</div><div class="step-b"><div class="step-t">Session stored</div><div class="step-x">On success, the user object is saved to <code>localStorage</code> so the session persists on page reload. A toast confirms: <em>"Signed in as [Name] · [Role]"</em>.</div></div></div>
   </div>
 
@@ -381,7 +381,7 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
   <div class="box warn"><div class="box-i">⚠️</div><div class="box-b"><div class="box-t">PIN Security Note</div><div class="box-x">PINs are stored in the <code>USERS</code> constant in the HTML source. For production deployments, move user credentials to a server-side authentication layer. The current PIN system is suitable for trusted-device, internal-use scenarios only.</div></div></div>
 
   <h2>Updating User PINs (Admin)</h2>
-  <p>To change a PIN or add/remove users: open the HTML file in a text editor, locate the <code>const USERS = [...]</code> array near line 6477, and update the <code>pin</code> field for the relevant user. Save the file. All devices using that file will pick up the change on the next page reload.</p>
+  <p>Sign in as the Managing Director and open <strong>Users &amp; Settings</strong> (sidebar → ADMINISTRATION) to change PINs, rename accounts, reassign branches, or add/delete users in-app — see Admin A3 for the full guide. Alternatively, edit the <code>const USERS = [...]</code> array near line 6488 of the HTML file in a text editor; that changes the defaults for every device using the file.</p>
 </section>
 
 <!-- ══════════════ SECTION 2: DASHBOARD ══════════════ -->
@@ -475,8 +475,30 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
     <div class="step"><div class="step-n">4</div><div class="step-b"><div class="step-t">Click Proceed to Payment</div><div class="step-x">Payment modal opens with total shown prominently.</div></div></div>
     <div class="step"><div class="step-n">5</div><div class="step-b"><div class="step-t">Select payment method(s) &amp; enter amount</div><div class="step-x">Select one or multiple payment methods. For cash, enter the tendered amount — change is computed automatically.</div></div></div>
     <div class="step"><div class="step-n">6</div><div class="step-b"><div class="step-t">Complete Sale</div><div class="step-x">System: (a) deducts stock from the active branch warehouse (<code>activeBranch</code>), (b) posts sales journal entry, (c) updates customer AR if credit sale, (d) displays receipt with cashier name and branch. Sale ID is generated (e.g., <code>SO-12481</code>).</div></div></div>
-    <div class="step"><div class="step-n">7</div><div class="step-b"><div class="step-t">Print receipt</div><div class="step-x">Click <strong>Print Receipt</strong>. Browser print dialog opens. Select printer or Save as PDF. Receipt shows itemized products, payment breakdown, customer name, and store info.</div></div></div>
+    <div class="step"><div class="step-n">7</div><div class="step-b"><div class="step-t">Print the Sales Invoice</div><div class="step-x">Click <strong>Print</strong>. The browser print dialog opens — select a printer or Save as PDF. The printout uses the official <strong>BIR Sales Invoice</strong> layout (see below).</div></div></div>
   </div>
+
+  <h2>Official Sales Invoice (BIR Format)</h2>
+  <p>Printed sales use the layout of Everos Appliance Center's BIR-authorized sales invoice, so the output is recognizable and compliant with the registered receipt. It includes:</p>
+  <ul>
+    <li><strong>Business identity header</strong> — EVEROS APPLIANCE CENTER · MAIDY J. PAZA – Prop. · NON-VAT REG. TIN 942-830-279-00000 · Everose Bldg., Lluch St. Poblacion, 9200 Iligan City.</li>
+    <li><strong>Invoice No.</strong> (the system Sale ID, shown in red) and <strong>Date</strong>.</li>
+    <li><strong>CASH SALES / CHARGE SALES</strong> checkboxes — ticked automatically (charge is used for account customers or credit/financing tenders).</li>
+    <li><strong>SOLD TO</strong> block — Registered Name, TIN, Business Address (fills from the customer record when present).</li>
+    <li><strong>Itemized table</strong> — Item Description/Nature of Service, Quantity, Unit Cost, Amount.</li>
+    <li><strong>Amount in words</strong> next to "Received the amount of ₱…".</li>
+    <li><strong>Totals column</strong> — Total Sales, Less: Discount (SC/PWD/NAAC/MOV/SP), Less: Withholding Tax, and <strong>TOTAL AMOUNT DUE</strong>.</li>
+    <li><strong>Signature blocks</strong> (Received Payment / Authorized Representative; SC/PWD Parent ID &amp; Signature) and the full BIR footer (ATP No., Date of ATP, Approved Series, Printer, Accreditation No., and the "NOT VALID FOR CLAIM OF INPUT TAX" notice).</li>
+  </ul>
+  <div class="box note"><div class="box-i">ℹ️</div><div class="box-b"><div class="box-t">NON-VAT — no VAT line</div><div class="box-x">Everos Appliance Center is <strong>NON-VAT registered</strong>, so no 12% VAT is added or shown. Selling prices are the final amounts; Total Amount Due = Total Sales − Discount − Withholding Tax. (Percentage tax, if any, is filed separately with the BIR and is not itemized on the invoice.)</div></div></div>
+  <h3>Editable Invoice No. &amp; Withholding Tax</h3>
+  <p>The POS checkout panel (right column, in the totals card) has two fields that flow onto the printed invoice:</p>
+  <ul>
+    <li><strong>Invoice No.</strong> — a 6-digit number that <strong>auto-increments</strong> from the last one used (stored in <code>everose_invoice_seq</code>). Edit it to match the pre-printed serial on the physical BIR booklet page you're writing on; the next sale continues from whatever number you entered. It prints as the red <strong>No.</strong> on the invoice.</li>
+    <li><strong>Less: Withholding Tax</strong> — enter the peso amount of creditable withholding tax the customer withholds (BIR Form 2307), if any. It reduces <strong>Total Amount Due</strong> (the net the customer pays) and prints on the <em>Less: Withholding Tax</em> line. In the ledger it is posted as a debit to <strong>1300 Creditable Withholding Tax</strong> so the entry stays balanced. Leave it at 0 for ordinary retail sales.</li>
+  </ul>
+
+  <div class="box warn"><div class="box-i">⚠️</div><div class="box-b"><div class="box-t">Printed booklet vs. system invoice</div><div class="box-x">Your BIR-authorized paper booklets carry their own pre-printed serial numbers. Use the editable <strong>Invoice No.</strong> field to match the booklet serial, or leave the auto number if the system invoice is your record copy. Follow your accountant's guidance on which document is officially issued to the customer.</div></div></div>
 
   <h2>Barcode Scanning in POS</h2>
   <div class="steps">
@@ -493,6 +515,24 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
   <div class="sec-eye" style="background:var(--blue-s);color:var(--blue)">📦 Chapter 4</div>
   <h1 class="sec-t">Inventory Management</h1>
   <p class="sec-d">Add, edit, and delete products. Track stock levels across all 3 warehouses. View movement history, perform stock adjustments, and manage product photos.</p>
+
+  <h2>Seeded Product Catalog</h2>
+  <p>The system ships pre-loaded with the real Everose product catalog — about <strong>45 products transcribed from the store sales ledgers</strong>. These replace the old generic demo products. Each carries a selling price (SRP), cost, category, brand, supplier and a small starting stock at the Iligan main warehouse. Brands and product families:</p>
+  <div class="t-wrap">
+    <table>
+      <thead><tr><th>Brand / Group</th><th>Supplier</th><th>Products</th><th>Categories</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Astron</strong></td><td>Astron Philippines</td><td>Rice cooker, blender, electric oven, gas stove, air fryer, 43"/55" LED TVs, 26" stand fan, spin dryer, twin-tub &amp; single-tub washers, and 4 aircon models (inverter split, window 1HP, 0.6HP)</td><td>Cooking, Kitchen, TV &amp; Audio, Cooling, Laundry</td></tr>
+        <tr><td><strong>DB Audio</strong></td><td>DB Audio</td><td>Skywalker 15" speaker, Party Box-210, Kumabeats 8585, SET-802 amplifier</td><td>TV &amp; Audio</td></tr>
+        <tr><td><strong>Polar Star</strong></td><td>Polar Star</td><td>Hot &amp; Cold water dispenser</td><td>Kitchen</td></tr>
+        <tr><td><strong>Furniture — Sala sets</strong></td><td>Everose Furniture Works</td><td>Regine, Corner VS, Domench, Lavander, Rihanna, Dane, Guavana, Bomerach, Olympus, Noah</td><td>Living Room</td></tr>
+        <tr><td><strong>Furniture — Dining &amp; storage</strong></td><td>Everose Furniture Works</td><td>GS oval glass-top &amp; dark-wood dining tables, china cabinet, Cristand 42" divider, aparadors (large/small)</td><td>Dining, Living Room, Bedroom</td></tr>
+        <tr><td><strong>Beds &amp; foam</strong></td><td>Hercules Foam &amp; Bedding</td><td>Lovenest beds (queen/full), Anastacia bed, Deuform foam (multiple sizes)</td><td>Bedroom, Mattresses</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="box warn"><div class="box-i">⚠️</div><div class="box-b"><div class="box-t">Verify prices before going live</div><div class="box-x">Prices and costs were read from handwritten ledgers, so some numbers (especially furniture and the gas stove) are best-effort. Product <em>names</em> are reliable. Review each product's cost and SRP in the Product Form (Inventory → click a product → Edit) and correct anything that looks off before you start selling.</div></div></div>
+  <p>To start from a completely blank inventory instead of the seeded catalog, use <strong>Data panel → Empty all data (clean slate)</strong> — see Admin A1. To restore the seeded catalog after edits, use <strong>Reset to starter catalog</strong>.</p>
 
   <h2>Stock Status Levels</h2>
   <div class="t-wrap">
@@ -958,6 +998,23 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
 
   <div class="box danger"><div class="box-i">⛔</div><div class="box-b"><div class="box-t">Critical Warning — Browser Storage</div><div class="box-x">Clearing the browser cache, "Clear site data," or uninstalling the browser WILL permanently delete all ERP data. Export a JSON backup at minimum once per week. Store backups in multiple locations: local drive, USB, Google Drive, email attachment.</div></div></div>
 
+  <h2>Reliability &amp; Error Handling</h2>
+  <div class="t-wrap">
+    <table>
+      <thead><tr><th>Safeguard</th><th>Behavior</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Crash recovery screen</strong></td><td>A React error boundary catches any screen crash and shows a recovery page (error details + <em>Reload app</em> + <em>Export JSON backup</em> buttons) instead of a blank window. Data in localStorage is unaffected.</td></tr>
+        <tr><td><strong>Save-failure warning</strong></td><td>If a save fails (typically storage quota exceeded from too many product photos), a toast warns you immediately instead of failing silently. Export a JSON backup, then remove large photos or old data.</td></tr>
+        <tr><td><strong>Backup import validation</strong></td><td>Imported JSON is checked for all required sections (products, movements, POs, journal) and malformed entries before anything is applied — a corrupt file is rejected whole rather than half-restored. Backup version (v1/v2) is preserved so full backups restore fully.</td></tr>
+        <tr><td><strong>Snapshot pre-validation</strong></td><td>On startup, a stored snapshot is validated before live data is touched, so a truncated save can never half-apply.</td></tr>
+        <tr><td><strong>Unsaved-changes guard</strong></td><td>With auto-save OFF, closing the tab after making changes triggers a browser confirmation prompt.</td></tr>
+        <tr><td><strong>PIN brute-force lockout</strong></td><td>5 consecutive wrong PINs lock the login pad for 30 seconds with a countdown.</td></tr>
+        <tr><td><strong>Idle auto-lock</strong></td><td>After 10 minutes with no pointer/keyboard/touch activity, the signed-in user is signed out automatically (protects shared registers).</td></tr>
+        <tr><td><strong>Production React builds</strong></td><td>The app loads minified production React with subresource-integrity hashes — faster startup and tamper-resistant CDN loading.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
   <h2>Data Operations</h2>
   <div class="t-wrap">
     <table>
@@ -967,22 +1024,44 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
         <tr><td><strong>Export JSON</strong></td><td>.json file</td><td>Full backup for restore</td><td>Data panel → Export JSON</td></tr>
         <tr><td><strong>Import JSON</strong></td><td>.json file</td><td>Restore from backup</td><td>Data panel → Import JSON → select file</td></tr>
         <tr><td><strong>Export XLSX</strong></td><td>.xlsx file</td><td>Share data with Excel/Sheets users</td><td>Data panel → Export XLSX</td></tr>
-        <tr><td><strong>Sync to Sheets</strong></td><td>Google Sheets</td><td>Live dashboard for management</td><td>Paste Script URL → Sync to Sheets</td></tr>
-        <tr><td><strong>Clear Data</strong></td><td>—</td><td>Factory reset (irreversible)</td><td>Data panel → Clear All Data → confirm</td></tr>
+        <tr><td><strong>Back up to Google Sheets</strong></td><td>Google Sheets</td><td>Cloud copy of all data</td><td>Paste Script URL → Back up to Google Sheets</td></tr>
+        <tr><td><strong>Restore from Google Sheets</strong></td><td>Google Sheets</td><td>Pull the cloud copy back onto this device</td><td>Paste Script URL → Restore from Google Sheets</td></tr>
+        <tr><td><strong>Reset to starter catalog</strong></td><td>—</td><td>Restore the seeded Everose product catalog &amp; discard changes</td><td>Data panel → Reset to starter catalog → confirm</td></tr>
+        <tr><td><strong>Empty all data (clean slate)</strong></td><td>—</td><td>Wipe everything to a blank system to start from zero</td><td>Data panel → Empty all data → confirm</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h2>Auto-Save</h2>
-  <p>Auto-save is ON by default. The system saves to localStorage after every: completed sale, goods receipt, stock adjustment, PO creation, customer save, and product save. The top bar shows <span style="display:inline-flex;align-items:center;gap:5px;background:var(--ok-s);border:1px solid rgba(74,222,128,.3);padding:2px 8px;border-radius:6px;font-size:11.5px;color:var(--ok)">● Synced · live</span> when auto-save is enabled.</p>
-
-  <h2>Google Sheets Sync Setup</h2>
-  <div class="steps">
-    <div class="step"><div class="step-n admin">A</div><div class="step-b"><div class="step-t">Deploy the Google Apps Script</div><div class="step-x">See the Deployment Guide for the complete script code. Deploy as a Web App with "Execute as Me" and "Anyone with the link" access.</div></div></div>
-    <div class="step"><div class="step-n admin">B</div><div class="step-b"><div class="step-t">Copy the Web App URL</div><div class="step-x">Format: <code>https://script.google.com/macros/s/AKfy.../exec</code></div></div></div>
-    <div class="step"><div class="step-n admin">C</div><div class="step-b"><div class="step-t">Paste into Data panel</div><div class="step-x">Data panel → "Google Sheets URL" field → paste → Save. URL is remembered across sessions.</div></div></div>
-    <div class="step"><div class="step-n admin">D</div><div class="step-b"><div class="step-t">Click "Sync to Sheets"</div><div class="step-x">Pushes all current data to Google Sheets. Run on-demand or after each major session.</div></div></div>
+  <h2>Reset &amp; Clean Slate</h2>
+  <p>The Data panel provides two reset options. Both are irreversible — <strong>export a JSON backup first</strong> if you might need the current data.</p>
+  <div class="t-wrap">
+    <table>
+      <thead><tr><th>Button</th><th>What it does</th><th>When to use</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Reset to starter catalog</strong></td><td>Restores the seeded Everose product catalog (the ~45 products transcribed from the sales ledgers) and clears any edits, added products, stock, sales, POs and journal entries.</td><td>You experimented and want the original product list back.</td></tr>
+        <tr><td><strong>Empty all data (clean slate)</strong></td><td>Deletes <em>all</em> products, stock, movements, purchase orders and journal entries. Only the Walk-in customer is kept. You start with a completely blank inventory and add your own products from scratch.</td><td>Going live with your own real stock count and you don't want any pre-seeded products at all.</td></tr>
+      </tbody>
+    </table>
   </div>
+  <div class="box note"><div class="box-i">ℹ️</div><div class="box-b"><div class="box-t">Fresh installs start with the real catalog</div><div class="box-x">A brand-new browser (no saved data) loads the seeded Everose catalog with a small starting stock at the Iligan main warehouse. There is no fake sales history, no demo customers, and no demo purchase orders — the ledger is clean and ready for real transactions. Use <strong>Empty all data</strong> if you'd rather begin with zero products.</div></div></div>
+
+  <h2>Where Data Is Stored (Local + Cloud)</h2>
+  <p>Everos ERP keeps your data in two places, so a lost laptop or cleared browser doesn't wipe you out:</p>
+  <ul>
+    <li><strong>Locally</strong> in this browser (localStorage) — instant, offline, the working copy. <strong>Auto-save is ON by default</strong> and writes after every completed sale, goods receipt, stock adjustment, PO creation, customer save, and product save. The top bar shows <span style="display:inline-flex;align-items:center;gap:5px;background:var(--ok-s);border:1px solid rgba(74,222,128,.3);padding:2px 8px;border-radius:6px;font-size:11.5px;color:var(--ok)">● Synced · live</span> when enabled.</li>
+    <li><strong>In Google Sheets</strong> (optional cloud backup) — a full copy pushed to your own spreadsheet. Turn on <strong>"Also back up to Google Sheets automatically (on save)"</strong> to mirror every local save to the cloud (throttled to about once every 20 seconds), or back up manually with the button.</li>
+  </ul>
+
+  <h2>Google Sheets — Cloud Backup &amp; Restore</h2>
+  <p>This is a <strong>two-way</strong> connection: <strong>Back up</strong> pushes a full snapshot to your spreadsheet; <strong>Restore</strong> pulls the latest snapshot back onto the current device (great for moving between the Iligan and store computers, or recovering after "Empty all data").</p>
+  <div class="steps">
+    <div class="step"><div class="step-n admin">A</div><div class="step-b"><div class="step-t">Create the Apps Script</div><div class="step-x">Create a Google Sheet → <strong>Extensions → Apps Script</strong>. Paste the setup code from the Data panel (<em>▼ Show Apps Script setup code</em>) — it now includes both <code>doPost</code> (backup) and <code>doGet</code> (restore).</div></div></div>
+    <div class="step"><div class="step-n admin">B</div><div class="step-b"><div class="step-t">Deploy as a Web App</div><div class="step-x"><strong>Deploy → New deployment → Web app</strong>. Set <strong>Execute as: Me</strong> and <strong>Who has access: Anyone</strong> — the "Anyone" setting is required so Restore can read the sheet back.</div></div></div>
+    <div class="step"><div class="step-n admin">C</div><div class="step-b"><div class="step-t">Paste the /exec URL</div><div class="step-x">Copy the deployment URL (ends in <code>/exec</code>) and paste it into the Data panel's <strong>Apps Script Web App URL</strong> field. It's remembered across sessions (<code>everose_gs_url</code>).</div></div></div>
+    <div class="step"><div class="step-n admin">D</div><div class="step-b"><div class="step-t">Back up / Restore</div><div class="step-x"><strong>Back up to Google Sheets</strong> pushes now; <strong>Restore from Google Sheets</strong> replaces this device's data with the cloud copy (asks for confirmation). "Last cloud backup" shows the most recent push.</div></div></div>
+  </div>
+  <div class="box note"><div class="box-i">ℹ️</div><div class="box-b"><div class="box-t">How the backup is stored</div><div class="box-x">The full snapshot is saved to a hidden <code>_ERP_Backup</code> sheet (split across cells for large data, e.g. product photos) which powers Restore, plus readable <strong>Products / Movements / Customers / PO Summary / Journal</strong> sheets you can browse. If you previously deployed the older one-way script, paste the new code and redeploy a <em>New version</em>.</div></div></div>
+  <div class="box warn"><div class="box-i">⚠️</div><div class="box-b"><div class="box-t">Restore replaces local data</div><div class="box-x">Restore overwrites everything currently on the device with the cloud copy. If Restore can't read the sheet (network/CORS or access not set to "Anyone"), use <strong>Import from JSON backup</strong> as a fallback. Keep periodic JSON exports too — they don't depend on Google.</div></div></div>
 
   <h2>Backup Schedule Recommendation</h2>
   <div class="t-wrap">
@@ -1068,18 +1147,20 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
     </table>
   </div>
 
-  <h2>How to Update a PIN</h2>
+  <h2>Managing Accounts In-App: Users &amp; Settings Screen</h2>
+  <p>When the <strong>Managing Director</strong> is signed in, a <strong>Users &amp; Settings</strong> item appears at the bottom of the sidebar navigation under an <strong>ADMINISTRATION</strong> heading (cashiers never see it). This screen manages all accounts without touching the HTML source — it is the recommended way to change PINs and users:</p>
   <div class="steps">
-    <div class="step"><div class="step-n">1</div><div class="step-b"><div class="step-t">Open the HTML file in a text editor</div><div class="step-x">Right-click <code>Inventory &amp; Purchasing.html</code> → Open with → Notepad (Windows) or TextEdit (Mac). Use VS Code for a better experience.</div></div></div>
-    <div class="step"><div class="step-n">2</div><div class="step-b"><div class="step-t">Find the USERS array</div><div class="step-x">Search for <code>const USERS = [</code> (around line 6462). Each entry has <code>id, name, role, pin, wh</code> fields.</div></div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-b"><div class="step-t">Change the pin field</div><div class="step-x">Update the <code>pin: "XXXX"</code> value. PINs must be exactly 4 numeric characters. Example: <code>pin: "5678"</code>.</div></div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-b"><div class="step-t">Save and refresh</div><div class="step-x">Save the HTML file. Reload the page in the browser. The new PIN is active immediately — no restart required.</div></div></div>
+    <div class="step"><div class="step-n">1</div><div class="step-b"><div class="step-t">Open Users &amp; Settings</div><div class="step-x">Sign in as the Managing Director (Eric Thegreat, PIN 1234) and click <strong>Users &amp; Settings</strong> in the sidebar (sliders icon, under ADMINISTRATION).</div></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-b"><div class="step-t">Edit accounts inline</div><div class="step-x">Each row has editable <strong>Name</strong>, <strong>Role</strong>, <strong>Branch access</strong> (any warehouse, or <em>All branches</em> for Director rights) and <strong>PIN</strong> fields. Click <strong>Show PINs</strong> to reveal the masked PIN values.</div></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-b"><div class="step-t">Add or delete accounts</div><div class="step-x"><strong>+ Add account</strong> appends a blank row with the next free ID. The 🗑 button deletes an account (you cannot delete the account you are signed in with).</div></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-b"><div class="step-t">Save changes</div><div class="step-x">Click <strong>Save changes</strong>. Validation requires a name on every account, unique 4-digit PINs, and at least one All-branches account. Saved accounts apply on the Login Screen immediately (stored in localStorage key <code>everose_users_v1</code>).</div></div></div>
   </div>
+  <p><strong>Reset to defaults</strong> (on the same screen) discards all custom accounts and restores the four factory users. Note that saved accounts are <em>per browser</em> — another device keeps the defaults until you repeat the changes there, or edit the source file (below).</p>
 
-  <h2>How to Add a New User</h2>
-  <p>Add a new entry to the <code>USERS</code> array with a unique <code>id</code>, <code>name</code>, <code>role</code>, 4-digit <code>pin</code>, and <code>wh</code> (warehouse ID or <code>"all"</code> for full access). Example:</p>
+  <h2>Fallback: Editing the Source File</h2>
+  <p>To change the defaults that seed every new device, edit the <code>const USERS = [...]</code> array (around line 6488 of <code>index.html</code> / <code>Inventory &amp; Purchasing.html</code>) in a text editor. Each entry has <code>id, name, role, pin, wh</code> fields (warehouse ID or <code>"all"</code> for full access). Example:</p>
   <pre style="background:var(--elev2);border:1px solid var(--line);border-radius:8px;padding:14px 16px;font-size:12.5px;color:var(--accent);overflow-x:auto;margin:12px 0">{ id: "U-005", name: "Dan Soriano", role: "Cashier — Iligan 2", pin: "4444", wh: "WH-ILIGAN" },</pre>
-  <p>Save the file and reload. The new user appears on the Login Screen immediately.</p>
+  <p>Save the file and reload. Browsers with custom accounts saved from Users &amp; Settings keep their custom list; use <strong>Reset to defaults</strong> there to re-read the file's array.</p>
 
   <div class="box warn"><div class="box-i">⚠️</div><div class="box-b"><div class="box-t">Security Reminder</div><div class="box-x">PINs are stored in plain text inside the HTML file. For sensitive deployments, implement server-side authentication. The PIN system is designed for trusted internal devices and low-risk operational environments. Do not use the same PIN as your bank or personal accounts.</div></div></div>
 </section>
@@ -1157,9 +1238,13 @@ td code{background:var(--elev2);padding:1px 5px;border-radius:4px;font-family:mo
         <tr><td><code>everose_erp_v1</code></td><td>All ERP data: products (incl. photos), customers, POs, movements, journal, credit companies</td><td>1–20 MB</td></tr>
         <tr><td><code>everose_auth_v1</code></td><td>Logged-in user object (id, name, role, wh) — cleared on sign-out</td><td>&lt;1 KB</td></tr>
         <tr><td><code>everose_lastlogin_v1</code></td><td>Map of user ID → last login timestamp (shown on Login Screen cards)</td><td>&lt;1 KB</td></tr>
+        <tr><td><code>everose_users_v1</code></td><td>Custom user accounts saved from Users &amp; Settings (overrides the built-in USERS defaults)</td><td>&lt;1 KB</td></tr>
         <tr><td><code>everose_notif_read</code></td><td>Array of read notification IDs</td><td>&lt;1 KB</td></tr>
         <tr><td><code>everose_notif_channels</code></td><td>Channel configurations: enabled state, phone/email/username per channel</td><td>&lt;1 KB</td></tr>
         <tr><td><code>everose_gs_url</code></td><td>Google Apps Script Web App URL</td><td>&lt;1 KB</td></tr>
+        <tr><td><code>everose_gs_autosync</code></td><td>"on"/"off" — auto-back-up to Google Sheets on each save</td><td>&lt;1 KB</td></tr>
+        <tr><td><code>everose_gs_lastbackup</code></td><td>Timestamp of the last cloud backup (shown in the Data panel)</td><td>&lt;1 KB</td></tr>
+        <tr><td><code>everose_invoice_seq</code></td><td>Last-used sales invoice number (auto-increments per sale)</td><td>&lt;1 KB</td></tr>
         <tr><td><code>everose_autosave</code></td><td>"on" or "off"</td><td>&lt;1 KB</td></tr>
         <tr><td><code>everose_tweaks</code></td><td>Theme, density, layout settings</td><td>&lt;1 KB</td></tr>
       </tbody>
