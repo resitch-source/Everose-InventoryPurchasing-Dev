@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#16161f" />
-<title>Everose Marketing Corp. · Inventory &amp; Purchasing</title>
+<title>NEXAPP · Inventory &amp; Purchasing</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -1365,8 +1365,8 @@ function Sidebar({ route, setRoute, collapsed, alertCount, mobileOpen, setMobile
           <React.Fragment>
             <EveroseLogo size={34} />
             <div style={{ lineHeight: 1.15, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 13.5, letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Everose</div>
-              <div className="mono" style={{ fontSize: 9, color: "var(--ink-3)", letterSpacing: ".08em", whiteSpace: "nowrap" }}>MARKETING CORP.</div>
+              <div style={{ fontWeight: 700, fontSize: 13.5, letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>NEXAPP</div>
+              <div className="mono" style={{ fontSize: 9, color: "var(--ink-3)", letterSpacing: ".08em", whiteSpace: "nowrap" }}>RETAIL ERP</div>
             </div>
           </React.Fragment>
         )}
@@ -1639,7 +1639,7 @@ const CHANNEL_DEFS = [
   { id: 'sms',       label: 'SMS',       short: 'SMS', icon: 'phone', color: '#4CAF50', bg: 'rgba(76,175,80,0.14)',   field: 'phone',    placeholder: '+639XXXXXXXXX',          hint: 'Mobile number with country code. (+63 for Philippines)' },
   { id: 'whatsapp',  label: 'WhatsApp',  short: 'WA',  icon: 'send',  color: '#25D366', bg: 'rgba(37,211,102,0.14)', field: 'phone',    placeholder: '+639XXXXXXXXX',          hint: 'WhatsApp number with country code. Opens wa.me link.' },
   { id: 'viber',     label: 'Viber',     short: 'VB',  icon: 'phone', color: '#7360F2', bg: 'rgba(115,96,242,0.14)', field: 'phone',    placeholder: '+639XXXXXXXXX',          hint: 'Viber number with country code. Opens viber:// deep link.' },
-  { id: 'messenger', label: 'Messenger', short: 'MS',  icon: 'mail',  color: '#0084FF', bg: 'rgba(0,132,255,0.14)',  field: 'username', placeholder: 'yourpageusername',       hint: 'Facebook Page username or profile slug (e.g. EveroseMarketing).' },
+  { id: 'messenger', label: 'Messenger', short: 'MS',  icon: 'mail',  color: '#0084FF', bg: 'rgba(0,132,255,0.14)',  field: 'username', placeholder: 'yourpageusername',       hint: 'Facebook Page username or profile slug (e.g. EverosAppliance).' },
 ];
 
 function defaultChannelState() {
@@ -1675,9 +1675,9 @@ function cleanPhone(ph) { return (ph || '').replace(/[^\d]/g, ''); }
 function buildMsg(notif, multi) {
   if (multi) {
     const lines = multi.map(n => '[' + (n.severity === 'out' ? 'CRITICAL' : 'WARNING') + '] ' + n.title + ': ' + n.body);
-    return 'Everose ERP — ' + multi.length + ' Alert' + (multi.length > 1 ? 's' : '') + '\n\n' + lines.join('\n\n') + '\n\n— Everose Marketing Corp.';
+    return 'NEXAPP — ' + multi.length + ' Alert' + (multi.length > 1 ? 's' : '') + '\n\n' + lines.join('\n\n') + '\n\n— Everos Appliance Center';
   }
-  return '[Everose ERP ' + (notif.severity === 'out' ? 'CRITICAL' : 'WARNING') + '] ' + notif.title + '\n\n' + notif.body + '\n\n— Everose Marketing Corp.';
+  return '[NEXAPP ' + (notif.severity === 'out' ? 'CRITICAL' : 'WARNING') + '] ' + notif.title + '\n\n' + notif.body + '\n\n— Everos Appliance Center';
 }
 
 function dispatchChannel(channelId, channelsCfg, notif, multi) {
@@ -1686,7 +1686,7 @@ function dispatchChannel(channelId, channelsCfg, notif, multi) {
   switch (channelId) {
     case 'email': {
       const def = CHANNEL_DEFS.find(c => c.id === 'email');
-      const sub = encodeURIComponent('[Everose ERP] ' + (multi ? multi.length + ' Alerts' : notif.title));
+      const sub = encodeURIComponent('[NEXAPP] ' + (multi ? multi.length + ' Alerts' : notif.title));
       window.open('mailto:' + (cfg.address || '') + '?subject=' + sub + '&body=' + msg);
       break;
     }
@@ -1740,7 +1740,7 @@ function ChannelSettingsView({ channels, updateChannel, activeChannels, notifs, 
     if (!(cfg[def.field] || '').trim()) { setTestResult(p => ({ ...p, [def.id]: 'error' })); return; }
     dispatchChannel(def.id, channels, {
       severity: 'warn', title: 'Test Alert — ' + def.label,
-      body: 'This is a test notification from Everose ERP. Channel is working correctly.',
+      body: 'This is a test notification from NEXAPP. Channel is working correctly.',
     }, null);
     setTestResult(p => ({ ...p, [def.id]: 'sent' }));
     setTimeout(() => setTestResult(p => ({ ...p, [def.id]: null })), 3000);
@@ -2383,7 +2383,7 @@ function BoardView({ items, query, wh, onOpen }) {
           </div>
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-              <span style={{ fontSize: 11, color: "var(--ink-3)" }}>On hand{wh !== "all" ? " · " + DATA.WAREHOUSES.find(w => w.id === wh).short : ""}</span>
+              <span style={{ fontSize: 11, color: "var(--ink-3)" }}>On hand{wh !== "all" ? " · " + (DATA.WAREHOUSES.find(w => w.id === wh) || {}).short : ""}</span>
               <span className="mono tnum" style={{ fontSize: 16, fontWeight: 700 }}>{p._total}<span style={{ fontSize: 11, color: "var(--ink-3)", fontWeight: 400 }}> u</span></span>
             </div>
             <StockBar value={p._total} reorder={p._reorder} />
@@ -2614,7 +2614,7 @@ function ProductDrawer({ product, onClose, onAddPO, onAdjust, onEdit }) {
   const [tab, setTab] = useStateD("stock");
   if (!product) return null;
   const p = product;
-  const sup = DATA.SUPPLIERS.find((s) => s.id === p.supplierId);
+  const sup = DATA.SUPPLIERS.find((s) => s.id === p.supplierId) || {};
   const moves = DATA.MOVEMENTS.filter((m) => m.sku === p.sku).slice(0, 12);
   const totalValue = p.cost * p.total;
 
@@ -2695,7 +2695,7 @@ function ProductDrawer({ product, onClose, onAddPO, onAdjust, onEdit }) {
         {tab === "movements" && (
           <div style={{ display: "flex", flexDirection: "column" }}>
             {moves.map((m) => {
-              const wname = DATA.WAREHOUSES.find((w) => w.id === m.wh).short;
+              const wname = (DATA.WAREHOUSES.find((w) => w.id === m.wh) || {}).short;
               const pos = m.qty > 0;
               return (
                 <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 4px", borderBottom: "1px solid var(--line-soft)" }}>
@@ -2803,6 +2803,7 @@ const INPUT_MONO = (err) => ({ ...INPUT_STYLE(err), fontFamily: "var(--mono)" })
 function ProductFormDrawer({ product, onClose, onSave, onDelete }) {
   const isNew = !product;
   const [showScanner, setShowScanner] = useStatePF(false);
+  const [scanTarget, setScanTarget] = useStatePF("sku"); // which field the scanner fills
   const [delConfirm, setDelConfirm] = useStatePF(false);
   const [err, setErr] = useStatePF({});
   const photoRef = useRefPF(null);
@@ -2814,6 +2815,7 @@ function ProductFormDrawer({ product, onClose, onSave, onDelete }) {
 
   const [form, setForm] = useStatePF(() => ({
     sku: product?.sku || "",
+    barcode: product?.barcode || "",
     name: product?.name || "",
     category: product?.category || ALL_CATEGORIES[0],
     brand: product?.brand || "",
@@ -2870,7 +2872,7 @@ function ProductFormDrawer({ product, onClose, onSave, onDelete }) {
     const stock = DATA.WAREHOUSES.reduce((a, w) => { a[w.id] = parseInt(form.stock[w.id]) || 0; return a; }, {});
     const total = Object.values(stock).reduce((s, v) => s + v, 0);
     onSave({
-      sku: form.sku.trim(), name: form.name.trim(), category: form.category,
+      sku: form.sku.trim(), barcode: form.barcode.trim(), name: form.name.trim(), category: form.category,
       brand: form.brand.trim(), supplierId: form.supplierId, price, cost,
       reorder: parseInt(form.reorder) || 0, valuation: form.valuation,
       serialized: form.serialized, photo: form.photo || null,
@@ -2948,18 +2950,33 @@ function ProductFormDrawer({ product, onClose, onSave, onDelete }) {
 
           {/* SKU */}
           <div style={{ marginBottom: 14 }}>
-            <Field label="SKU / Barcode *" error={err.sku}>
+            <Field label="SKU (internal code) *" error={err.sku}>
               <div style={{ display: "flex", gap: 8 }}>
                 <input value={form.sku} onChange={(e) => set("sku", e.target.value)}
                   disabled={!isNew} placeholder="e.g. APP-REF-0001"
                   className="mono" style={{ ...INPUT_MONO(err.sku), flex: 1, background: isNew ? "var(--bg)" : "var(--bg-2)", color: isNew ? "var(--ink)" : "var(--ink-3)" }} />
                 {isNew && (
-                  <button className="btn" onClick={() => setShowScanner(true)} title="Scan barcode/QR to fill SKU">
+                  <button className="btn" onClick={() => { setScanTarget("sku"); setShowScanner(true); }} title="Scan barcode/QR to fill SKU">
                     <Icon name="barcode" size={14} />Scan
                   </button>
                 )}
               </div>
               {!isNew && <div style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>SKU is locked after creation.</div>}
+            </Field>
+          </div>
+
+          {/* Barcode (manufacturer UPC/EAN) — editable & scannable any time */}
+          <div style={{ marginBottom: 14 }}>
+            <Field label="Barcode (UPC / EAN)" error={err.barcode}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={form.barcode} onChange={(e) => set("barcode", e.target.value)}
+                  placeholder="Scan or type the product barcode"
+                  className="mono" style={{ ...INPUT_MONO(err.barcode), flex: 1 }} />
+                <button className="btn" onClick={() => { setScanTarget("barcode"); setShowScanner(true); }} title="Scan barcode to fill this field">
+                  <Icon name="barcode" size={14} />Scan
+                </button>
+              </div>
+              <div style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>Optional. Used for barcode lookup at the register (Point of Sale).</div>
             </Field>
           </div>
 
@@ -3141,7 +3158,7 @@ function ProductFormDrawer({ product, onClose, onSave, onDelete }) {
 
       {showScanner && (
         <BarcodeScanner
-          onScan={(code) => { set("sku", code); setShowScanner(false); }}
+          onScan={(code) => { set(scanTarget === "barcode" ? "barcode" : "sku", code); setShowScanner(false); }}
           onClose={() => setShowScanner(false)}
         />
       )}
@@ -3198,8 +3215,8 @@ function StockAdjustDrawer({ product, onClose, onConfirm }) {
   } else {
     const cur = p.stock[trFrom] || 0; const q = Math.min(cur, Math.max(0, trQty));
     if (q > 0 && trFrom !== trTo && trTo) {
-      changes = [{ wh: trFrom, delta: -q, type: "Transfer", reason: "→ " + DATA.WAREHOUSES.find(w => w.id === trTo).short },
-                 { wh: trTo, delta: q, type: "Transfer", reason: "← " + DATA.WAREHOUSES.find(w => w.id === trFrom).short }];
+      changes = [{ wh: trFrom, delta: -q, type: "Transfer", reason: "→ " + (DATA.WAREHOUSES.find(w => w.id === trTo) || {}).short },
+                 { wh: trTo, delta: q, type: "Transfer", reason: "← " + (DATA.WAREHOUSES.find(w => w.id === trFrom) || {}).short }];
       valid = true;
     }
     summary = "Move " + (q || 0) + "u";
@@ -3349,7 +3366,7 @@ function suggestReorders() {
     }
   });
   return Object.entries(bySup).map(([sid, items]) => ({
-    supplier: DATA.SUPPLIERS.find((s) => s.id === sid),
+    supplier: DATA.SUPPLIERS.find((s) => s.id === sid) || { id: sid || "UNKNOWN", name: sid ? "Unknown supplier (" + sid + ")" : "No supplier", terms: "—", lead: 0, onTime: 0 },
     items, total: items.reduce((s, it) => s + it.sug * it.p.cost, 0),
   })).sort((a, b) => b.total - a.total);
 }
@@ -3427,7 +3444,7 @@ function PurchaseScreen({ rev, pos, onCreate, onReceive, prefillFromSuggestion, 
               </tr></thead>
               <tbody>
                 {pos.map((po) => {
-                  const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId);
+                  const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId) || {};
                   const pct = poRecvPct(po);
                   const canReceive = po.status === "Open" || po.status === "Partial";
                   return (
@@ -3493,7 +3510,7 @@ function CreatePODrawer({ open, onClose, initial, onSubmit, toast }) {
     });
     setProdQuery("");
     if (!supplier) {
-      const sup = DATA.SUPPLIERS.find((s) => s.id === p.supplierId);
+      const sup = DATA.SUPPLIERS.find((s) => s.id === p.supplierId) || {};
       setSupplier(sup); setSupQuery(sup.name);
     }
   }
@@ -3673,7 +3690,7 @@ function ReceivingScreen({ pos, onReceive, onBatchReceive }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {receivable.map((po) => {
-            const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId);
+            const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId) || {};
             const remaining = po.lines.reduce((s, l) => s + (l.qty - l.recv), 0);
             const overdue = po.eta < 0;
             const checked = !!sel[po.id];
@@ -3745,7 +3762,7 @@ function BatchReceiveDrawer({ pos, onClose, onConfirm }) {
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
         {pos.map((po) => {
-          const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId);
+          const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId) || {};
           const lines = po.lines.filter((l) => l.qty - l.recv > 0);
           return (
             <div key={po.id} className="card" style={{ background: "var(--panel-2)", overflow: "hidden" }}>
@@ -3793,7 +3810,7 @@ function ReceiveDrawer({ po, onClose, onConfirm, defaultWh }) {
   }, [po, defaultWh]);
 
   if (!po) return null;
-  const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId);
+  const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId) || {};
   const selLines = po.lines.filter((l) => sel[l.sku] && (rows[l.sku] || 0) > 0);
   const totalRecv = selLines.reduce((s, l) => s + (rows[l.sku] || 0), 0);
   const totalCost = selLines.reduce((s, l) => s + (rows[l.sku] || 0) * l.cost, 0);
@@ -3978,8 +3995,8 @@ function POSScreen({ onComplete, toast, onPrint, wh: branchWh, cashierName }) {
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
         <AutoComplete value={scan} onChange={setScan} onPick={addProduct}
-          items={DATA.PRODUCTS} fields={[{ key: "name", w: 1 }, { key: "sku", w: 0.95 }, { key: "brand", w: 0.8 }]} icon="search" size="lg"
-          placeholder="Search or scan product SKU / name…"
+          items={DATA.PRODUCTS} fields={[{ key: "name", w: 1 }, { key: "sku", w: 0.95 }, { key: "barcode", w: 0.9 }, { key: "brand", w: 0.8 }]} icon="search" size="lg"
+          placeholder="Search or scan product SKU / barcode / name…"
           footer={<div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--ink-3)", fontSize: 11 }}><Icon name="sparkles" size={13} style={{ color: "var(--accent-text)" }} />Typo-tolerant · <span className="kbd">↵</span> adds top match</div>}
           render={(p, q) => (
             <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
@@ -4000,7 +4017,8 @@ function POSScreen({ onComplete, toast, onPrint, wh: branchWh, cashierName }) {
         {showScanner && <BarcodeScanner
           onScan={(code) => {
             setShowScanner(false);
-            const p = DATA.PRODUCTS.find((x) => x.sku === code || x.sku.toLowerCase() === code.toLowerCase() || x.name.toLowerCase() === code.toLowerCase());
+            const c = (code || "").toLowerCase();
+            const p = DATA.PRODUCTS.find((x) => x.sku === code || (x.sku || "").toLowerCase() === c || (x.barcode && x.barcode.toLowerCase() === c) || (x.name || "").toLowerCase() === c);
             if (p) { addProduct(p); toast && toast("Added: " + p.name, "ok"); }
             else toast && toast("Product not found: " + code, "bad");
           }}
@@ -4910,8 +4928,11 @@ const PD = {
 const pdMoney = (n) => "₱" + Math.round(n).toLocaleString("en-US");
 const TODAY = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
-/* ── Registered business identity (from BIR-authorized sales invoice) ── */
-const BIZ = {
+/* ── Registered business identity (from BIR-authorized sales invoice) ──
+   Defaults below; editable in Users & Settings → Business details and
+   stored in localStorage (everose_business_v1), including a logo. */
+const BIZ_STORE_KEY = 'everose_business_v1';
+const BIZ_DEFAULTS = {
   name: "EVEROS APPLIANCE CENTER",
   prop: "MAIDY J. PAZA – Prop.",
   vatStatus: "NON-VAT REG.",
@@ -4924,7 +4945,14 @@ const BIZ = {
   printedBy: "NEW A & M PRINTING PRESS · 221-1528",
   accreditation: "101MP20240000000002",
   notInputTax: "THIS DOCUMENT IS NOT VALID FOR CLAIM OF INPUT TAX.",
+  logo: null, // base64 data URL
 };
+function loadBiz() {
+  try { const s = JSON.parse(localStorage.getItem(BIZ_STORE_KEY) || 'null'); return (s && typeof s === 'object') ? { ...BIZ_DEFAULTS, ...s } : { ...BIZ_DEFAULTS }; }
+  catch { return { ...BIZ_DEFAULTS }; }
+}
+function saveBiz(b) { try { localStorage.setItem(BIZ_STORE_KEY, JSON.stringify(b)); } catch {} }
+Object.assign(window, { loadBiz, saveBiz, BIZ_DEFAULTS });
 
 /* Peso amount → words (for the "Received the amount of" line) */
 function pesosInWords(n) {
@@ -4953,8 +4981,10 @@ function pesosInWords(n) {
 }
 
 function DocHead({ title, meta, badge }) {
+  const BIZ = loadBiz();
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", borderBottom: "2px solid " + PD.ink, paddingBottom: 14, marginBottom: 18 }}>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, borderBottom: "2px solid " + PD.ink, paddingBottom: 14, marginBottom: 18 }}>
+      {BIZ.logo && <img src={BIZ.logo} alt="" style={{ height: 46, maxWidth: 150, objectFit: "contain", flex: "none" }} />}
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.01em" }}>{BIZ.name}</div>
         <div style={{ fontSize: 11, color: PD.muted, marginTop: 2 }}>{BIZ.prop} · {BIZ.vatStatus} TIN: {BIZ.tin}</div>
@@ -4994,6 +5024,7 @@ function CheckBox({ checked, label }) {
 }
 
 function ReceiptDoc({ data }) {
+  const BIZ = loadBiz();
   const invDate = data.date ? new Date(data.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : TODAY;
   const isCharge = data.saleType === "charge";
   const c = data.customer || {};
@@ -5009,12 +5040,15 @@ function ReceiptDoc({ data }) {
     <div style={{ border: invLine, fontFamily: "'IBM Plex Sans', sans-serif", color: PD.ink }}>
       {/* Masthead */}
       <div style={{ display: "flex", borderBottom: invLine }}>
-        <div style={{ flex: 1, padding: "12px 14px" }}>
+        <div style={{ flex: 1, padding: "12px 14px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+          {BIZ.logo && <img src={BIZ.logo} alt="" style={{ height: 52, maxWidth: 160, objectFit: "contain", flex: "none" }} />}
+          <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>{BIZ.name}</div>
           <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2 }}>{BIZ.prop}</div>
           <div style={{ fontSize: 11, color: PD.muted, marginTop: 3 }}>{BIZ.vatStatus} TIN: {BIZ.tin}</div>
           <div style={{ fontSize: 11, color: PD.muted }}>{BIZ.addr1}</div>
           <div style={{ fontSize: 11, color: PD.muted }}>{BIZ.addr2}</div>
+          </div>
         </div>
         <div style={{ width: 230, borderLeft: invLine, padding: "12px 14px", display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: ".04em" }}>SALES INVOICE</div>
@@ -5116,7 +5150,7 @@ function ReceiptDoc({ data }) {
 
 /* ---- Purchase Order ---- */
 function PODoc({ po }) {
-  const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId);
+  const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId) || {};
   const total = po.lines.reduce((s, l) => s + l.qty * l.cost, 0);
   return (
     <div>
@@ -5527,7 +5561,7 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
         <div className="card" style={{ overflow: "hidden" }}>
           <PanelHead icon="truck" title="Inbound shipments" color="var(--accent-text)" action="Receiving" onAction={() => onGoto("receiving")} />
           {inbound.map((po) => {
-            const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId);
+            const sup = DATA.SUPPLIERS.find((s) => s.id === po.supplierId) || {};
             const rem = po.lines.reduce((s, l) => s + (l.qty - l.recv), 0);
             return (
               <div key={po.id} onClick={() => onReceive(po)} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 16px", borderTop: "1px solid var(--line-soft)", cursor: "pointer" }}
@@ -5554,7 +5588,7 @@ function DashboardScreen({ rev, pos, onGoto, onOpenProduct, onReceive }) {
           <PanelHead icon="refresh" title="Recent stock activity" color="var(--ink-2)" />
           {recent.map((m) => {
             const p = DATA.pid(m.sku) || {};
-            const wname = DATA.WAREHOUSES.find((w) => w.id === m.wh).short;
+            const wname = (DATA.WAREHOUSES.find((w) => w.id === m.wh) || {}).short;
             const pos2 = m.qty > 0;
             return (
               <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 16px", borderTop: "1px solid var(--line-soft)" }}>
@@ -5598,12 +5632,13 @@ function saveDataNow() {
   try {
     const snap = {
       v: 2, ts: Date.now(),
-      products: DATA.PRODUCTS.map(p => ({ sku: p.sku, name: p.name, category: p.category, brand: p.brand, supplierId: p.supplierId, price: p.price, cost: p.cost, reorder: p.reorder, valuation: p.valuation, serialized: p.serialized, photo: p.photo||null, stock: {...p.stock}, total: p.total, onOrder: p.onOrder||0, margin: p.margin, trend: p.trend, notes: p.notes||"", model: p.model||"", dimensions: p.dimensions||"", warranty: p.warranty||"", color: p.color||"" })),
+      products: DATA.PRODUCTS.map(p => ({ sku: p.sku, barcode: p.barcode||"", name: p.name, category: p.category, brand: p.brand, supplierId: p.supplierId, price: p.price, cost: p.cost, reorder: p.reorder, valuation: p.valuation, serialized: p.serialized, photo: p.photo||null, stock: {...p.stock}, total: p.total, onOrder: p.onOrder||0, margin: p.margin, trend: p.trend, notes: p.notes||"", model: p.model||"", dimensions: p.dimensions||"", warranty: p.warranty||"", color: p.color||"" })),
       movements: DATA.MOVEMENTS.slice(0, 1000),
       pos: JSON.parse(JSON.stringify(DATA.POS)),
       customers: JSON.parse(JSON.stringify(DATA.CUSTOMERS)),
       creditCompanies: JSON.parse(JSON.stringify(DATA.CREDIT_COMPANIES)),
       journal: DATA.JOURNAL.slice(0, 500),
+      business: (window.loadBiz ? window.loadBiz() : undefined),
     };
     localStorage.setItem(STORE_KEY, JSON.stringify(snap));
     // Optionally mirror to Google Sheets (throttled). Reads localStorage we just wrote — no recursion.
@@ -5669,6 +5704,7 @@ function loadSavedData() {
       DATA.CREDIT_COMPANIES.length = 0; DATA.CREDIT_COMPANIES.push(...snap.creditCompanies);
     }
     DATA.JOURNAL.length = 0; DATA.JOURNAL.push(...snap.journal);
+    if (snap.business && window.saveBiz) window.saveBiz(snap.business);
     return snap.ts;
   } catch(e) { return null; }
 }
@@ -5696,7 +5732,7 @@ function doExportJSON() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'Everose-ERP-Backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.download = 'NEXAPP-Backup-' + new Date().toISOString().slice(0,10) + '.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
@@ -5760,7 +5796,7 @@ function doExportXLSX() {
     ID: c.id, Name: c.name, Type: c.type||'', 'AR Balance': c.balance||0, Phone: c.phone||''
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(custRows), 'Customers');
-  XLSX.writeFile(wb, 'Everose-ERP-' + new Date().toISOString().slice(0,10) + '.xlsx');
+  XLSX.writeFile(wb, 'NEXAPP-Export-' + new Date().toISOString().slice(0,10) + '.xlsx');
 }
 
 /* Push a full snapshot to Google Sheets (cloud backup). The Apps Script stores the
@@ -5805,7 +5841,7 @@ async function doRestoreFromSheets(url) {
 }
 
 const GS_SCRIPT_TEMPLATE = `// =====================================================
-// Everose ERP — Google Apps Script backend (two-way)
+// NEXAPP — Google Apps Script backend (two-way)
 // Paste in a new Apps Script project, Deploy as Web App
 // ("Execute as: Me", "Who has access: Anyone"), then copy
 // the /exec URL into the ERP Data panel.
@@ -5937,7 +5973,7 @@ function DataPanel({ open, onClose, onReload }) {
               <Btn variant="primary" onClick={() => { const ts = saveDataNow(); setStatus(ts ? '&#x2713; Saved at ' + new Date(ts).toLocaleTimeString() : '&#x2717; Save failed'); }}>
                 <Icon name="check" size={13} />Save now
               </Btn>
-              <Btn onClick={() => { if (confirm('Reset to the starter product catalog? This restores the seeded Everose products and clears any changes you made. This cannot be undone.')) { clearSavedData(); location.reload(); } }} >
+              <Btn onClick={() => { if (confirm('Reset to the starter product catalog? This restores the seeded starter products and clears any changes you made. This cannot be undone.')) { clearSavedData(); location.reload(); } }} >
                 <Icon name="refresh" size={13} />Reset to starter catalog
               </Btn>
               <Btn onClick={() => { if (confirm('Start with a CLEAN, EMPTY system? This deletes ALL products, stock, sales, purchase orders and journal entries (only the Walk-in customer is kept). Export a backup first if unsure. This cannot be undone.')) { startCleanData(); location.reload(); } }} >
@@ -6852,8 +6888,8 @@ function LoginScreen({ onLogin }) {
       {/* Logo */}
       <div style={{ textAlign: "center" }}>
         <EveroseLogo size={52} />
-        <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: "-0.02em", marginTop: 10 }}>Everose ERP</div>
-        <div style={{ fontSize: 11, color: "var(--ink-3)", letterSpacing: ".06em", marginTop: 3 }}>MARKETING CORP. · SECURE ACCESS</div>
+        <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: "-0.02em", marginTop: 10 }}>NEXAPP</div>
+        <div style={{ fontSize: 11, color: "var(--ink-3)", letterSpacing: ".06em", marginTop: 3 }}>RETAIL ERP · SECURE ACCESS</div>
       </div>
 
       {!selUser ? (
@@ -6942,7 +6978,7 @@ function LoginScreen({ onLogin }) {
       )}
 
       <div style={{ fontSize: 11, color: "var(--ink-4)", textAlign: "center" }}>
-        Powered by Nexarch Technology · Everose Marketing Corp. © 2026
+        NEXAPP · Powered by Nexarch Technology © 2026
       </div>
     </div>
   );
@@ -6953,11 +6989,26 @@ function UserAdminScreen({ currentUser, toast }) {
   const [users, setUsers] = React.useState(loadUsers);
   const [showPins, setShowPins] = React.useState(false);
   const [dirty, setDirty] = React.useState(false);
+  const [biz, setBiz] = React.useState(loadBiz);
+  const [bizDirty, setBizDirty] = React.useState(false);
+  const logoRef = React.useRef(null);
 
   const inp = {
     height: 34, padding: "0 10px", borderRadius: 7, fontSize: 12.5, width: "100%",
     border: "1px solid var(--line)", background: "var(--bg)", color: "var(--ink)", outline: "none",
   };
+
+  const bizUpd = (k, v) => { setBiz(b => ({ ...b, [k]: v })); setBizDirty(true); };
+  const onLogoFile = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast("Please choose an image file (PNG/JPG/WebP)", "low"); return; }
+    if (file.size > 1024 * 1024) { toast("Logo must be under 1 MB — please use a smaller image", "low"); return; }
+    const r = new FileReader();
+    r.onload = (e) => { setBiz(b => ({ ...b, logo: e.target.result })); setBizDirty(true); };
+    r.readAsDataURL(file);
+  };
+  const saveBusiness = () => { saveBiz(biz); setBizDirty(false); toast("Business details saved — they'll appear on printed invoices & documents", "ok"); };
+  const resetBusiness = () => { if (!confirm("Reset business details (and logo) to the built-in defaults?")) return; setBiz({ ...BIZ_DEFAULTS }); setBizDirty(true); };
 
   const upd = (i, field, val) => { setUsers(us => us.map((u, j) => j === i ? { ...u, [field]: val } : u)); setDirty(true); };
 
@@ -7033,6 +7084,62 @@ function UserAdminScreen({ currentUser, toast }) {
               </button>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* ── Business details (invoice / document identity + logo) ── */}
+      <div className="card" style={{ overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "13px 16px", borderBottom: "1px solid var(--line-soft)", flexWrap: "wrap" }}>
+          <Icon name="receipt" size={15} style={{ color: "var(--accent-text)" }} />
+          <span style={{ fontWeight: 700, fontSize: 13.5 }}>Business details</span>
+          <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>shown on printed invoices &amp; documents</span>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button className="btn ghost sm" onClick={resetBusiness}><Icon name="refresh" size={12} /> Reset to defaults</button>
+            <button className="btn primary sm" onClick={saveBusiness} disabled={!bizDirty}><Icon name="check" size={12} /> Save details</button>
+          </div>
+        </div>
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* Logo */}
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <div style={{ width: 96, height: 96, borderRadius: 10, border: "1px dashed var(--line)", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none", overflow: "hidden" }}>
+              {biz.logo ? <img src={biz.logo} alt="logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+                : <Icon name="image" size={26} style={{ color: "var(--ink-4)" }} />}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600 }}>Company logo</div>
+              <div style={{ fontSize: 11, color: "var(--ink-3)", maxWidth: 320, lineHeight: 1.5 }}>PNG, JPG or WebP · under 1 MB. Appears on the sales invoice, purchase orders and statements.</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <input ref={logoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { onLogoFile(e.target.files[0]); e.target.value = ""; }} />
+                <button className="btn sm" onClick={() => logoRef.current && logoRef.current.click()}><Icon name="upload" size={12} /> {biz.logo ? "Replace logo" : "Upload logo"}</button>
+                {biz.logo && <button className="btn ghost sm" onClick={() => bizUpd("logo", null)}><Icon name="trash" size={12} /> Remove</button>}
+              </div>
+            </div>
+          </div>
+          {/* Fields */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {[
+              ["name", "Registered business name", "1 / -1"],
+              ["prop", "Proprietor / owner line", null],
+              ["vatStatus", "VAT status", null],
+              ["tin", "TIN", null],
+              ["addr1", "Address line 1", null],
+              ["addr2", "Address line 2", "1 / -1"],
+              ["atpNo", "BIR Authority to Print (ATP) No.", null],
+              ["atpDate", "Date of ATP", null],
+              ["series", "Approved series", null],
+              ["printedBy", "Printed by", null],
+              ["accreditation", "Accreditation No.", null],
+              ["notInputTax", "Footer notice", "1 / -1"],
+            ].map(([k, label, span]) => (
+              <label key={k} style={{ display: "flex", flexDirection: "column", gap: 4, gridColumn: span || "auto" }}>
+                <span style={{ fontSize: 10.5, color: "var(--ink-4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".03em" }}>{label}</span>
+                <input style={inp} value={biz[k] || ""} onChange={e => bizUpd(k, e.target.value)} />
+              </label>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--ink-3)", lineHeight: 1.55 }}>
+            These details replace the defaults on every printout. Keep them exactly as they appear on your BIR-registered receipts. Saved on this device (<span className="mono">everose_business_v1</span>) and included in JSON &amp; Google Sheets backups.
+          </div>
         </div>
       </div>
 
@@ -7213,7 +7320,7 @@ function App() {
   }, [pushToast, bump]);
 
   const openAddToPO = useCb((p) => {
-    const sup = DATA.SUPPLIERS.find((s) => s.id === p.supplierId);
+    const sup = DATA.SUPPLIERS.find((s) => s.id === p.supplierId) || {};
     setCreatePO({ open: true, initial: { supplier: sup, lines: [{ sku: p.sku, name: p.name, qty: Math.max(1, p.reorder * 2), cost: p.cost }] } });
   }, []);
 
@@ -7255,7 +7362,7 @@ function App() {
     po.status = allDone ? "Received" : "Partial";
     if (allDone) po.eta = -1;
     setReceivePO(null); bump();
-    pushToast(units + "u received into " + DATA.WAREHOUSES.find((w) => w.id === wh).short + " · stock & AP updated", "ok");
+    pushToast(units + "u received into " + (DATA.WAREHOUSES.find((w) => w.id === wh) || {}).short + " · stock & AP updated", "ok");
     if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
   }, [pushToast, bump]);
 
@@ -7273,7 +7380,7 @@ function App() {
       po.status = "Received"; po.eta = -1;
     });
     setBatchPOs(null); bump();
-    pushToast(units + "u across " + count + " POs received into " + DATA.WAREHOUSES.find((w) => w.id === wh).short, "ok");
+    pushToast(units + "u across " + count + " POs received into " + (DATA.WAREHOUSES.find((w) => w.id === wh) || {}).short, "ok");
     if (window.saveDataNow && localStorage.getItem('everose_autosave') !== 'off') saveDataNow();
   }, [pushToast, bump]);
 
